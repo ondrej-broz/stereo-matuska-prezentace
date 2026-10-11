@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Závěr</title>
+<!-- Závěrečný slide (Ondra 11. 10. 2026): „Ve stereu zní spolupráce nejlíp. Těšíme se!“ – stereo = dva kanály = my a vy.
+     Rozložení (Ondra: „udělej to jinak – rozložení celého slajdu, přidej kontaktní údaje, zatím placeholdery“):
+     vlevo slogan Stereo Display na tři řádky zarovnaný doleva (nejširší řádek 1000 px podle měření) a TĚŠÍME SE! Kit Rounded verzálkami s rozpalem,
+     vpravo za tenkou linkou kontakty – dvě karty (profilovka 132 px, jméno, telefon, e-mail; bez role); společný řádek info@brozi.cz zrušen (je to Ondrův e-mail).
+     Jména podle Ondry (profil-1 = Tomáš Benda, profil-2 = Ondřej Brož; Ondřej nahoře – Ondra 11. 10.); telefony a e-maily od Ondry 11. 10. Tmavě zelená #213227, vanilka, jantar. Slide 1920 × 1080, fotí se ve 2× (zaver-snimek.py). -->
+<style>
+  @font-face{font-family:'Stereo Display';src:url('../web/StereoDisplay-Regular.otf') format('opentype')}
+  @font-face{font-family:'Kit Rounded';font-weight:300;src:local('Kit Rounded Light'),local('KitRounded-Light'),url('../web/KitRounded-Light.otf') format('opentype')}
+  html,body{margin:0;height:100%;background:#213227;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center}
+  .slide{position:relative;width:1920px;height:1080px;flex:none;zoom:var(--k,1);color:#F1E3BE;font-family:'Kit Rounded',sans-serif;font-weight:300}
+  .slogan{position:absolute;left:140px;top:50%;transform:translateY(-50%)}
+  h1{margin:0;font:400 120px/1.02 'Stereo Display',sans-serif}
+  .tesime{margin-top:62px;font-size:30px;letter-spacing:.5em;text-transform:uppercase;color:#E3AD62}
+  .delic{position:absolute;left:1236px;top:170px;bottom:170px;width:1.5px;background:rgba(241,227,190,.22)}
+  .kontakty{position:absolute;left:1316px;right:120px;top:50%;transform:translateY(-50%)}
+  .stitek{font-size:22px;letter-spacing:.5em;text-transform:uppercase;color:#E3AD62}
+  .karta{display:flex;align-items:center;gap:30px;margin-top:40px}
+  .karta img{width:132px;height:132px;display:block;flex:none}
+  .jmeno{font-size:36px;line-height:1.1}
+  .udaje{margin-top:12px;font-size:24px;line-height:1.45;opacity:.85}
+</style>
+</head>
+<body>
+<div class="slide">
+  <div class="slogan">
+    <h1 id="h">VE STEREU ZNÍ<br>SPOLUPRÁCE<br>NEJLÍP.</h1>
+    <div class="tesime">Těšíme se!</div>
+  </div>
+  <div class="delic"></div>
+  <div class="kontakty">
+    <div class="stitek">Kontakt</div>
+    <div class="karta"><img src="profil-2.png" alt="Ondřej Brož">
+      <div><div class="jmeno">Ondřej Brož</div><div class="udaje">+420&nbsp;775&nbsp;636&nbsp;431<br>info@brozi.cz</div></div></div>
+    <div class="karta"><img src="profil-1.png" alt="Tomáš Benda">
+      <div><div class="jmeno">Tomáš Benda</div><div class="udaje">+420&nbsp;720&nbsp;572&nbsp;281<br>toombe9@gmail.com</div></div></div>
+  </div>
+</div>
+<script>
+const fit = () => document.querySelector('.slide').style.setProperty('--k', Math.min(innerWidth / 1920, innerHeight / 1080));
+addEventListener('resize', fit); fit();
+document.fonts.load("120px 'Stereo Display'").then(() => {                 // nejširší řádek sloganu na 1000 px
+  const c = document.createElement('canvas').getContext('2d'); c.font = "120px 'Stereo Display'";
+  const w = Math.max(...['VE STEREU ZNÍ', 'SPOLUPRÁCE', 'NEJLÍP.'].map(t => c.measureText(t).width));
+  document.getElementById('h').style.fontSize = (120 * 1000 / w).toFixed(1) + 'px';
+});
+</script>
+</body>
+</html>

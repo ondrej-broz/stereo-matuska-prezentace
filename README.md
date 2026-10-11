@@ -1,6 +1,6 @@
 # Stereo Matuška – prezentace vizuální identity
 
-Interaktivní prezentace (slideshow) pro klienta Stereo Matuška. Soukromý repozitář – obsahuje nevydanou identitu klienta.
+Interaktivní prezentace (slideshow) pro klienta Stereo Matuška. Živě: https://ondrej-broz.github.io/stereo-matuska-prezentace/
 
 ## Spuštění
 
@@ -20,5 +20,11 @@ Pak otevřít `http://localhost:8766/slideshow.html` (nebo `index.html`, který 
 
 ## Obsah
 
-Jen soubory, které prezentace za běhu používá (zdrojové podklady a generátory jsou mimo repozitář).
-Písmo Kit Rounded (`web/KitRounded-Light.otf`) je licencované přes Adobe.
+Soubory, které prezentace za běhu používá, a zdroje slidů, které se dají opravit přímo tady (cenová nabídka `nabidka/`, závěr `zaver/`).
+Ostatní zdrojové podklady jsou mimo repozitář.
+
+- `python kontrola.py` – kontrola před nahráním (skripty, obrázky, odkazy) a očíslovaný seznam slidů
+- `python vyfot-slidy.py <název>` – vyfotí slide z HTML do `slideshow/` (nabidka-80, ale, nabidka-60, zaver, vse)
+- `CLAUDE.md` – návod pro úpravy přes Claude Code v prohlížeči
+
+Písmo Kit Rounded (`web/KitRounded-Light.otf`) je licencované přes Adobe. Inter (`web/Inter-Variable.ttf`) je pod SIL Open Font License.
