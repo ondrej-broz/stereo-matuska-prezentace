@@ -91,7 +91,8 @@ const now = () => performance.now() / 1000;
 const toParent = m => { if (USEK) parent.postMessage(Object.assign({ usek: USEK }, m), '*'); };
 function smycka() {
   cancelAnimationFrame(raf); faze = 'smycka'; t0 = now();
-  const krok = () => { stav(pVCase(now() - t0)); raf = paused ? 0 : requestAnimationFrame(krok); };
+  let posl = null;                                                         // stejný stav se nepřepisuje (klidové fáze smyčky)
+  const krok = () => { const p = pVCase(now() - t0); if (p !== posl) { posl = p; stav(p); } raf = paused ? 0 : requestAnimationFrame(krok); };
   krok();
 }
 function predej() { faze = 'konec'; cancelAnimationFrame(raf); raf = 0; morf(MORF, p0); if (USEK) toParent({ done: 'next', navaz: NAVAZ }); }
@@ -117,7 +118,7 @@ else {
     addEventListener('message', e => {
       if (e.source !== parent) return;
       const d = e.data || {};
-      if (d.cmd === 'pause') { paused = true; cancelAnimationFrame(raf); raf = 0; }
+      if (d.cmd === 'pause') { paused = true; cancelAnimationFrame(raf); raf = 0; faze = 'smycka'; stav(0); }   // skrytý = připravený výchozí snímek
       else if (d.cmd === 'start') { paused = false; smycka(); }
       else if (d.cmd === 'next') next();
       else if (d.cmd === 'prev') prev();
@@ -134,6 +135,7 @@ else {
     if (Math.hypot(dx, dy) < 15 && e.button === 0) next();
   });
   addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey) return;                                    // zkratky prohlížeče nechat být
     if (['ArrowRight', 'ArrowDown', 'PageDown', 'Space', 'Enter'].includes(e.code)) { e.preventDefault(); next(); }
     else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.code)) { e.preventDefault(); prev(); }
     else if (USEK && ['Home', 'End', 'KeyF', 'KeyH'].includes(e.code)) toParent({ key: e.code });

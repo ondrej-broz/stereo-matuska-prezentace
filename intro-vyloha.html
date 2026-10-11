@@ -263,8 +263,11 @@ float nightAt(vec2 px){
   return fade * (1. - d * dayMul);
 }
 vec3 bg(vec2 px){ vec2 t = clamp(px / res, vec2(0.), vec2(1.));
-  if (p12On > .5) return texture2D(p12, t).rgb;
-  return mix(texture2D(day, t).rgb, texture2D(night, t).rgb, nightAt(px)); }
+  if (p12On > .5) return T(p12, t).rgb;
+  float n = nightAt(px);                                  // čistý den / noc = jedno čtení textury místo dvou (11. 10. – výkon)
+  if (n <= 0.) return T(day, t).rgb;
+  if (n >= 1.) return T(night, t).rgb;
+  return mix(T(day, t).rgb, T(night, t).rgb, n); }
 
 float sdO(vec2 p, vec3 o){
   if (o.z < .5) return 1e4;
@@ -274,14 +277,20 @@ float sdO(vec2 p, vec3 o){
 }
 // mapa vzdáleností má rozsah ±64 px; dál = „daleko“ (jinak by se záře písmen rozlila přes celý obraz)
 float dec(float v){ float d = (v * 255. - 128.) * .5; return d > 63. ? 1e4 : d; }
+// obdélníky písmen v mapách vzdáleností (kanál < 255, změřeno 11. 10. 2026 z web/pismena-a.png a -b.png) s rezervou na lineární filtr;
+// mimo ně je mapa celá 255 = „daleko“, takže se textura nemusí číst (výkon – stejný obraz)
+const vec4 BS = vec4(259., 259., 593., 819.), BT = vec4(492., 259., 795., 819.), BE = vec4(695., 260., 998., 817.),
+           BR = vec4(897., 259., 1231., 819.), BE2 = vec4(1136., 260., 1438., 817.);
+vec4 mapa(vec2 q, vec4 b, sampler2D m){ vec4 v = vec4(1.); if (q.x >= b.x - 2. && q.y >= b.y - 2. && q.x <= b.z + 3. && q.y <= b.w + 3.) v = T(m, q / res); return v; }
 float sdL(vec2 p){
   if (letters < .5) return 1e4;
   float d = 1e4, e;
-  e = dec(texture2D(la, (vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.x, ly.x)) / res).r) * lsc + lg.x; if (lw.x > .01 && e < d) { d = e; LW = lw.x; LB = lbr.x; LF = lf.x; LS = ls.x; }
-  e = dec(texture2D(la, (vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.y, ly.y)) / res).g) * lsc + lg.y; if (lw.y > .01 && e < d) { d = e; LW = lw.y; LB = lbr.y; LF = lf.y; LS = ls.y; }
-  e = dec(texture2D(la, (vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.z, ly.z)) / res).b) * lsc + lg.z; if (lw.z > .01 && e < d) { d = e; LW = lw.z; LB = lbr.z; LF = lf.z; LS = ls.z; }
-  e = dec(texture2D(lb, (vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.w, ly.w)) / res).r) * lsc + lg.w; if (lw.w > .01 && e < d) { d = e; LW = lw.w; LB = lbr.w; LF = lf.w; LS = ls.w; }
-  e = dec(texture2D(lb, (vec2(318., 322.) + (p - lorg) / lsc - vec2(lx5, ly5)) / res).g) * lsc + lg5;   if (lw5 > .01 && e < d) { d = e; LW = lw5; LB = lbr5; LF = lf5; LS = ls5; }
+  vec2 q;
+  q = vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.x, ly.x); e = dec(mapa(q, BS, la).r) * lsc + lg.x; if (lw.x > .01 && e < d) { d = e; LW = lw.x; LB = lbr.x; LF = lf.x; LS = ls.x; }
+  q = vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.y, ly.y); e = dec(mapa(q, BT, la).g) * lsc + lg.y; if (lw.y > .01 && e < d) { d = e; LW = lw.y; LB = lbr.y; LF = lf.y; LS = ls.y; }
+  q = vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.z, ly.z); e = dec(mapa(q, BE, la).b) * lsc + lg.z; if (lw.z > .01 && e < d) { d = e; LW = lw.z; LB = lbr.z; LF = lf.z; LS = ls.z; }
+  q = vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.w, ly.w); e = dec(mapa(q, BR, lb).r) * lsc + lg.w; if (lw.w > .01 && e < d) { d = e; LW = lw.w; LB = lbr.w; LF = lf.w; LS = ls.w; }
+  q = vec2(318., 322.) + (p - lorg) / lsc - vec2(lx5, ly5);   e = dec(mapa(q, BE2, lb).g) * lsc + lg5;   if (lw5 > .01 && e < d) { d = e; LW = lw5; LB = lbr5; LF = lf5; LS = ls5; }
   return d;
 }
 float sdf(vec2 p){ return min(min(sdO(p, oa), sdO(p, ob)), sdL(p)); }
@@ -347,7 +356,7 @@ void main(){
   // záře kolem skla vypnutá (7. 10. 2026 – Ondra: bez záře, i ve final/7.png)
   float gr = fract(sin(dot(px + time * 61.7, vec2(12.9898, 78.233))) * 43758.5453);
   col += (gr - .5) * .025;
-  col = mix(col, texture2D(fin, px / res).rgb, finMix);
+  col = mix(col, T(fin, px / res).rgb, finMix);
   // slide 12: bílá se rozlévá od otvoru O ven (měkká čela 40 px), sklo se mění v plnou bílou
   if (whiteOn > .5) col = mix(col, vec3(1.), smoothstep(whiteR, whiteR - 40., length(px - oa.xy)) * smoothstep(.6, -.6, d));
   gl_FragColor = vec4(col, 1.);
@@ -357,11 +366,14 @@ const cv = document.getElementById('c');
 const gl = cv.getContext('webgl', { antialias: false, preserveDrawingBuffer: true });
 function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s); return s; }
 const pr = gl.createProgram();
-gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
+// textury se čtou s pevnou úrovní 0 (texture2DLodEXT): mipmapy nejsou, obraz je stejný, ale ve Windows (Chrome → DirectX) se pak větev
+// s lomem skla počítá jen u hran, ne pro celou obrazovku (11. 10. 2026: snímek finále 16 → ~5 ms na Intel UHD)
+const LOD = !!gl.getExtension('EXT_shader_texture_lod');
+gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, (LOD ? '#extension GL_EXT_shader_texture_lod : enable\n#define T(s, c) texture2DLodEXT(s, c, 0.)\n' : '#define T(s, c) texture2D(s, c)\n') + FS)); gl.linkProgram(pr); gl.useProgram(pr);
 gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
 const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-const U = n => gl.getUniformLocation(pr, n);
+const UL = {}, U = n => n in UL ? UL[n] : (UL[n] = gl.getUniformLocation(pr, n));   // polohy uniform jen jednou (výkon)
 gl.uniform2f(U('res'), W, H);
 gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
 
@@ -376,7 +388,13 @@ function tex(unit, src, n = 0) {
     ok(); }; im.src = n ? src + '?r=' + n : src; });
 }
 
+let nakreslenoKlic = '';
 function draw(s, t) {
+  // stejný stav = stejný obraz: nekreslit znovu (výdrž kroku, konec intra – dřív se 60× za s počítal nehybný snímek a grafika nestíhala);
+  // zrno se mění jen 24× za s, po úplném prolnutí do 7.png (fin = 1) už čas nehraje roli
+  const klic = JSON.stringify(s) + '|' + (s.fin >= 1 && !s.whiteOn ? '' : Math.floor(t * 24));
+  if (klic === nakreslenoKlic) return;
+  nakreslenoKlic = klic;
   gl.uniform1f(U('fade'), s.wipe);
   gl.uniform1f(U('splitX'), s.split <= 1 ? lerp(-2, SPLIT_X, s.split) : lerp(SPLIT_X, W + 2, s.split - 1));
   gl.uniform1f(U('glow'), s.glow || 0);
@@ -530,6 +548,8 @@ function updatePair(P) {
   P.dt.setAttribute('opacity', (k * PAIR_DIM).toFixed(3));
   P.db.setAttribute('opacity', ((1 - k) * PAIR_DIM).toFixed(3));
 }
+const ANAT_FOTKY = ['web/final7.webp', 'web/noc.webp', 'web/den.webp'].map(src => { const i = new Image(); i.src = src; return i; });
+const zahrejAnat = () => ANAT_FOTKY.forEach(i => i.decode().catch(() => {}));   // dekódovat předem (sdílí se s <image> v SVG)
 function setPair(P, to, animate) { P.from = animate ? P.k : to; P.to = to; P.t0 = animate ? nowS() : -1e9; updatePair(P); }
 
 function render(t) { const s = state(t); if (/nofin/.test(location.hash)) s.fin = 0; draw(s, t); }   // #nofin = bez prolnutí do 7.png (ladění)
@@ -540,7 +560,15 @@ window.__render = render;
 const USEK = (/(?:^#|&)usek=(intro|prepinac|logo)/.exec(location.hash) || [])[1] || null;
 const toParent = m => { if (USEK) parent.postMessage(Object.assign({ usek: USEK }, m), '*'); };
 const fixed = /(?:^#|&)t=([\d.]+)/.exec(location.hash);
-Promise.all([tex(0, 'web/den.webp'), tex(1, 'web/noc.webp'), tex(2, 'web/pismena-a.png'), tex(3, 'web/pismena-b.png'), tex(4, '7.png'), tex(5, '12.png'),
+// textury podle úseku (11. 10. 2026): intro jen den, noc, písmena a 7.png, logo jen písmena a 12.png, přepínač na plátno nekreslí vůbec –
+// dřív každý ze tří iframů nahrál všech šest (18 dekódování při startu, ~150 MB v grafice) a intro čekalo i na 12.png
+const TEXTURY = [[0, 'web/den.webp'], [1, 'web/noc.webp'], [2, 'web/pismena-a.png'], [3, 'web/pismena-b.png'], [4, '7.png'], [5, '12.png']]
+  .filter(([u]) => !USEK || (USEK === 'intro' ? u <= 4 : USEK === 'logo' ? [2, 3, 5].includes(u) : false));
+for (let u = 0; u < 6; u++) if (!TEXTURY.some(x => x[0] === u)) {   // nepoužitá jednotka: černá 1 × 1 (ať grafika nehlásí chybějící texturu)
+  gl.activeTexture(gl.TEXTURE0 + u); gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array(3));
+}
+Promise.all([...TEXTURY.map(([u, src]) => tex(u, src)),
              document.fonts.load('300 46px "Kit Rounded"').catch(() => {})]).then(() => {   // písmo popisků načíst předem, ať neproblikne náhradní
   gl.uniform1i(U('day'), 0); gl.uniform1i(U('night'), 1); gl.uniform1i(U('la'), 2); gl.uniform1i(U('lb'), 3); gl.uniform1i(U('fin'), 4); gl.uniform1i(U('p12'), 5);
   window.__ready = true;
@@ -560,7 +588,7 @@ Promise.all([tex(0, 'web/den.webp'), tex(1, 'web/noc.webp'), tex(2, 'web/pismena
     const el = SLIDES[i - 1], anat = el && el.id === 'anat';
     // anatomie začíná přesně jako konec intra (final/7.png); od = navázání z přepínače naležato (koncept/prepinac-nalezato.html) v čase od
     if (anat) updateAnat(back ? 99 : od || 0);
-    if (el && PAIRS[el.id]) setPair(PAIRS[el.id], back ? 1 - PAIRS[el.id].start : PAIRS[el.id].start, false);   // zpět = přijít do konečné polohy
+    if (el && PAIRS[el.id]) { setPair(PAIRS[el.id], back ? 1 - PAIRS[el.id].start : PAIRS[el.id].start, false); zahrejAnat(); }   // zpět = přijít do konečné polohy
     sl = i; slT = anat ? now() - (back ? 99 : od || 0) : now(); done12 = false;
     SLIDES.forEach((s, k) => s.classList.toggle('on', k === i - 1));
     L12el.svg.classList.toggle('on', i === S12);
@@ -605,6 +633,10 @@ Promise.all([tex(0, 'web/den.webp'), tex(1, 'web/noc.webp'), tex(2, 'web/pismena
     if (P2 && P2.to === P2.start) { setPair(P2, 1 - P2.start, true); return; }   // dvojice: nejdřív přepnout (p1 noc → den, p2 den → noc)
     if (USEK === 'prepinac' && sl === SLIDES.length) { toParent({ done: 'next' }); return; }   // za vinylem / kytarou konec úseku
     if (sl > 0) { showSlide(sl + 1); return; }
+    if (P.mode === 'play' && P.back) {                                      // dopředu během couvání: pokračovat od místa, kde přechod je (11. 10.)
+      const total = P.segs.reduce((a, x) => a + x[1], 0), tt = Math.min(total, Math.max(0, total - (now() - P.t0) * 1.5));
+      P.step++; P.back = false; P.t0 = now() - tt; return;
+    }
     if (P.mode === 'play' && !P.back) { P.mode = 'hold'; return; }          // během přechodu: dokonči ho
     if (P.step >= STEPS.length - 1 && P.mode !== 'loop') { if (USEK === 'intro') { toParent({ done: 'next' }); return; } showSlide(1); return; }   // konec intra → první slide
     let segs = STEPS[P.step + 1].tr.slice();
@@ -622,7 +654,13 @@ Promise.all([tex(0, 'web/den.webp'), tex(1, 'web/noc.webp'), tex(2, 'web/pismena
     if (USEK === 'prepinac' && sl === 1) { toParent({ done: 'prev' }); return; }
     if (sl > 0) { showSlide(sl - 1, true); return; }
     if (P.mode === 'loop') { toParent({ done: 'prev' }); return; }
-    if (P.mode === 'play') { P.mode = 'hold'; if (P.back) return; }
+    if (P.mode === 'play' && P.back) { P.mode = 'hold'; return; }          // během couvání: dokonči ho
+    if (P.mode === 'play') {                                                // zpět během přechodu: couvat od místa, kde přechod je (11. 10.; dřív skok na konec)
+      const tr = STEPS[P.step].tr, total = tr.reduce((a, x) => a + x[1], 0);
+      const pre = P.segs.slice(0, P.segs.length - tr.length).reduce((a, x) => a + x[1], 0);   // úvodní dojezd ze smyčky do noci (jen dopředu)
+      const tt = Math.min(total, Math.max(0, now() - P.t0 - pre));
+      P.segs = tr; P.step--; P.mode = 'play'; P.back = true; P.t0 = now() - (total - tt) / 1.5; return;
+    }
     P.segs = STEPS[P.step].tr; P.step--; P.mode = 'play'; P.back = true; P.t0 = now();
   }
   function home() { showSlide(0); P.step = 0; P.mode = 'loop'; P.t0 = now(); }
@@ -638,8 +676,9 @@ Promise.all([tex(0, 'web/den.webp'), tex(1, 'web/noc.webp'), tex(2, 'web/pismena
     if (Math.hypot(dx, dy) < 15 && e.button === 0) next();
   });
   addEventListener('keydown', e => {
-    if (['ArrowRight', 'PageDown', 'Space', 'Enter'].includes(e.code)) { e.preventDefault(); next(); }
-    else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.code)) { e.preventDefault(); prev(); }
+    if (e.ctrlKey || e.metaKey) return;                                    // zkratky prohlížeče nechat být
+    if (['ArrowRight', 'ArrowDown', 'PageDown', 'Space', 'Enter'].includes(e.code)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.code)) { e.preventDefault(); prev(); }
     else if (e.code === 'Home') { if (USEK) toParent({ key: 'Home' }); else home(); }
     else if (USEK && ['End', 'KeyF', 'KeyH'].includes(e.code)) toParent({ key: e.code });
   });
@@ -648,7 +687,8 @@ Promise.all([tex(0, 'web/den.webp'), tex(1, 'web/noc.webp'), tex(2, 'web/pismena
     if (/(?:^#|&)noc(?:&|$)/.test(location.hash) && sl > 0 && PAIRS[SLIDES[sl - 1].id]) setPair(PAIRS[SLIDES[sl - 1].id], 1, false);   // #slide=2&noc = dvojice rovnou v noci
     const m2 = /cas(?:12)?=([\d.]+)/.exec(location.hash); if (m2) { slT = now() - +m2[1]; if (/stop/.test(location.hash)) freeze12 = +m2[1]; } }   // #slide=N&cas=3.9 = slide N v čase 3,9 s (&stop zastaví čas)
   function startUsek(back, od) {
-    if (USEK === 'intro') { showSlide(0); P.step = back ? STEPS.length - 1 : 0; P.mode = back ? 'hold' : 'loop'; P.back = false; P.t0 = now(); }
+    if (USEK === 'intro') { showSlide(0); P.step = back ? STEPS.length - 1 : 0; P.mode = back ? 'hold' : 'loop'; P.back = false; P.t0 = now();
+      if (back) { nazevEl.style.transition = 'none'; nazevEl.classList.add('off'); nazevEl.getBoundingClientRect(); nazevEl.style.transition = ''; } }
     else if (USEK === 'prepinac') showSlide(back ? SLIDES.length : 1, back, od);
     else if (USEK === 'logo') { showSlide(S12); if (back) slT = now() - END12 - 1; }
   }
@@ -675,7 +715,7 @@ Promise.all([tex(0, 'web/den.webp'), tex(1, 'web/noc.webp'), tex(2, 'web/pismena
     }   // po dokončení stojí
     else if (sl > 0 && SLIDES[sl - 1].id === 'anat') updateAnat(t);
     else if (sl > 0 && PAIRS[SLIDES[sl - 1].id]) updatePair(PAIRS[SLIDES[sl - 1].id]);
-    if (sl === 0 || (sl < S12 && t <= 1)) draw(current(), now());
+    if (sl === 0) draw(current(), now());   // slidy přepínače plátno zakrývají – kreslí se jen intro (11. 10.: dřív ještě 1 s po každém střihu naprázdno)
     requestAnimationFrame(frame);
   })();
 });

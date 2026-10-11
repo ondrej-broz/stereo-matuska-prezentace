@@ -95,13 +95,15 @@ else if (USEK) {
   addEventListener('message', e => {
     if (e.source !== parent) return;
     const d = e.data || {};
-    if (d.cmd === 'pause') { paused = true; cancelAnimationFrame(raf); raf = 0; }
+    if (d.cmd === 'pause') { paused = true; cancelAnimationFrame(raf); raf = 0; t0 = -1e9; stav(d.za ? KONEC + 1 : 0); }   // skrytý = připravený vstupní snímek
     else if (d.cmd === 'start') { paused = false; hraj(!!d.back); }
     else if (d.cmd === 'next') next();
     else if (d.cmd === 'prev') prev();
   });
   // připraveno až po načtení obrázků a písma (ať se při vstupu na slide nic nedonačítá)
-  addEventListener('load', () => document.fonts.ready.then(() => toParent({ ready: true })));
+  addEventListener('load', () => document.fonts.ready
+    .then(() => Promise.all([...document.images].map(i => i.decode().catch(() => {}))))   // dekódovat předem – telefony pak vyjedou bez zadrhnutí
+    .then(() => toParent({ ready: true })));
 } else addEventListener('load', () => hraj(false));
 
 // vstup: ťuknutí / klik = dál, tah doleva = dál, doprava = zpět; Home / End / F předá prezentaci
@@ -115,7 +117,7 @@ addEventListener('pointerup', e => {
   if (Math.hypot(dx, dy) < 15 && e.button === 0) next();
 });
 addEventListener('keydown', e => {
-  if (CAS !== null) return;
+  if (CAS !== null || e.ctrlKey || e.metaKey) return;
   if (['ArrowRight', 'ArrowDown', 'PageDown', 'Space', 'Enter'].includes(e.code)) { e.preventDefault(); next(); }
   else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.code)) { e.preventDefault(); prev(); }
   else if (USEK && ['Home', 'End', 'KeyF', 'KeyH'].includes(e.code)) toParent({ key: e.code });
