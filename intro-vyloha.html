@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stereo intro výloha</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  /* telefon: prohlížeč nesmí tah prstem brát jako posun nebo zoom stránky, ovládání řeší skript */
+  html,body{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  canvas{position:absolute;inset:0;margin:auto;max-width:100vw;max-height:100vh;aspect-ratio:16/9;width:100vw;height:auto}
+  @media (min-aspect-ratio:16/9){canvas{height:100vh;width:auto}}
+  /* slidy za intrem: mezi sebou střih; jen přechod z intra na první slide (a zpět) se prolne */
+  #slides>*{position:absolute;inset:0;margin:auto;width:min(100vw,calc(100vh*16/9));height:min(100vh,calc(100vw*9/16));opacity:0;pointer-events:none}
+  #slides>.on{opacity:1}
+  #slides>.fade{transition:opacity .8s cubic-bezier(.65,0,.35,1)}
+  .slide svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+  /* písmo identity: Kit Rounded Light (podtitul MATUŠKA); nejdřív nainstalované, jinak soubor z web/ */
+  @font-face{font-family:"Kit Rounded";font-weight:300;font-style:normal;src:local("KitRounded Light"),local("KitRounded-Light"),url("web/KitRounded-Light.otf") format("opentype")}
+  .lab{font:300 46px/1 "Kit Rounded","Avenir Next","Century Gothic","Helvetica Neue",Arial,sans-serif;letter-spacing:.35em;fill:#fff}
+  /* slide 12: spodní část loga (linky, MATUŠKA, jehla) jako SVG nad plátnem */
+  #l12{position:absolute;inset:0;margin:auto;width:min(100vw,calc(100vh*16/9));height:min(100vh,calc(100vw*9/16));pointer-events:none;display:none}
+  #l12.on{display:block}
+  /* krok 0: nápis STEREO MATUŠKA jako na statických slidech 1 a 2 (typografie/T0c-intro-nazev.html); zmizí, když se přepínač rozdělí */
+  #nazev{position:absolute;inset:0;margin:auto;width:min(100vw,calc(100vh*16/9));height:min(100vh,calc(100vw*9/16));pointer-events:none;transition:opacity .6s cubic-bezier(.65,0,.35,1)}
+  #nazev.off{opacity:0}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<!-- nápis kroku 0; x = 960 + polovina prostrkání za posledním písmenem (.67em × 42 / 2), ať je opticky na středu -->
+<svg id="nazev" viewBox="0 0 1920 1080"><text x="974.07" y="540" text-anchor="middle" dominant-baseline="central" fill="#fff" style="font:300 42px 'Kit Rounded';letter-spacing:.67em">STEREO MATUŠKA</text></svg>
+<!-- slidy za intrem: anatomie přepínače, dvojice káva/stout a vinyl/kytara; za nimi slide 12 (12.png na plátně + #l12), tím prezentace končí -->
+<!-- slide 12: bílé logo na noční výloze; souřadnice skupiny = souřadnice SVG/logo_1.svg (posun a měřítko nastaví skript) -->
+<svg id="l12" viewBox="0 0 1920 1080"><g id="l12g" fill="none" stroke="#fff" stroke-width="7.6" stroke-linecap="round" stroke-linejoin="round">
+    <line id="l12L" x1="3.8" y1="579.21" x2="3.8" y2="579.21" opacity="0"/>
+    <path class="sub" fill="#fff" stroke="none" opacity="0" d="M272.97,617.49c-.93,0-1.75-.21-2.45-.64-.7-.43-1.19-1.01-1.46-1.75-.27-.74-.41-1.5-.41-2.27v-73.14c0-3.19.54-5.52,1.63-7,1.09-1.48,3.15-2.22,6.18-2.22,1.55,0,2.8.29,3.73.88.93.58,1.71,1.4,2.33,2.45.62,1.05,1.24,2.32,1.87,3.79l17.15,40.6c.78,1.87,1.48,3.6,2.1,5.19.62,1.59,1.19,3.07,1.69,4.43.51,1.36.95,2.59,1.34,3.67.39,1.09.7,2.02.93,2.8.23-.78.53-1.71.88-2.8.35-1.09.8-2.31,1.34-3.67.54-1.36,1.13-2.84,1.75-4.43.62-1.59,1.32-3.32,2.1-5.19l17.15-40.6c.62-1.48,1.24-2.74,1.87-3.79.62-1.05,1.42-1.87,2.39-2.45.97-.58,2.23-.88,3.79-.88,2.95,0,4.98.74,6.07,2.22,1.09,1.48,1.63,3.81,1.63,7v73.14c0,.78-.16,1.54-.47,2.27-.31.74-.78,1.32-1.4,1.75-.62.43-1.44.64-2.45.64s-1.83-.21-2.45-.64c-.62-.43-1.11-.99-1.46-1.69-.35-.7-.53-1.48-.53-2.33v-39.78c0-7.08.08-13.59.23-19.54.16-5.95.35-10.71.58-14.29l-24.26,57.04c-.47,1.17-.93,2.29-1.4,3.38-.47,1.09-1.09,1.96-1.87,2.62-.78.66-1.95.99-3.5.99s-2.62-.33-3.44-.99c-.82-.66-1.46-1.52-1.92-2.57-.47-1.05-.97-2.2-1.52-3.44l-24.26-57.04c.31,3.58.53,8.34.64,14.29.12,5.95.17,12.46.17,19.54v39.78c0,.86-.16,1.63-.47,2.33-.31.7-.78,1.26-1.4,1.69-.62.43-1.44.64-2.45.64Z"/>
+    <path class="sub" fill="#fff" stroke="none" opacity="0" d="M403.97,617.84c-.7,0-1.42-.16-2.16-.47-.74-.31-1.34-.82-1.81-1.52-.47-.7-.7-1.48-.7-2.33,0-.93.27-2.06.82-3.38.54-1.32,1.28-3.15,2.22-5.48l24.85-62.41c.78-1.87,1.46-3.56,2.04-5.07.58-1.52,1.24-2.8,1.98-3.85.74-1.05,1.63-1.85,2.68-2.39,1.05-.54,2.39-.82,4.02-.82s3.05.27,4.02.82c.97.54,1.81,1.34,2.51,2.39.7,1.05,1.32,2.33,1.87,3.85.54,1.52,1.17,3.21,1.87,5.07l25.08,62.53c.86,2.26,1.58,4.04,2.16,5.37.58,1.32.88,2.45.88,3.38,0,.86-.25,1.63-.76,2.33-.51.7-1.09,1.21-1.75,1.52-.66.31-1.38.47-2.16.47-1.09,0-1.98-.31-2.68-.93-.7-.62-1.34-1.65-1.92-3.09-.58-1.44-1.3-3.32-2.16-5.66l-7.23-19.6-1.28-3.27-8.17-20.65c-1.71-4.59-3.44-9.14-5.19-13.65-1.75-4.51-3.48-9.06-5.19-13.65-1.71,4.59-3.46,9.14-5.25,13.65-1.79,4.51-3.54,9.06-5.25,13.65l-8.05,20.53-1.4,3.38-7.12,19.6c-.86,2.33-1.57,4.22-2.16,5.66-.58,1.44-1.21,2.47-1.87,3.09-.66.62-1.58.93-2.74.93ZM413.65,590.08l2.45-7.23h43.86l2.1,7.23h-48.41Z"/>
+    <path class="sub" fill="#fff" stroke="none" opacity="0" d="M543.02,617.49c-1.48,0-2.57-.47-3.27-1.4-.7-.93-1.05-2.1-1.05-3.5v-73.72h-24.73c-.86,0-1.63-.13-2.33-.41-.7-.27-1.25-.68-1.63-1.22-.39-.54-.58-1.32-.58-2.33s.19-1.79.58-2.33c.39-.54.93-.95,1.63-1.22.7-.27,1.48-.41,2.33-.41h57.74c.85,0,1.61.14,2.27.41.66.27,1.19.68,1.58,1.22.39.54.58,1.32.58,2.33.08,1.01-.1,1.81-.53,2.39-.43.58-.95.99-1.57,1.22-.62.23-1.36.35-2.22.35h-24.5v73.72c0,1.32-.33,2.47-.99,3.44-.66.97-1.77,1.46-3.32,1.46Z"/>
+    <path class="sub" fill="#fff" stroke="none" opacity="0" d="M659.2,617.84c-7,0-12.93-1.42-17.79-4.26-4.86-2.84-8.56-6.9-11.08-12.19-2.53-5.29-3.79-11.55-3.79-18.78v-47.48c0-1.4.37-2.53,1.11-3.38.74-.86,1.88-1.28,3.44-1.28,1.4,0,2.45.41,3.15,1.22.7.82,1.05,1.92,1.05,3.32v43.98c0,6.61.8,12.21,2.39,16.8,1.59,4.59,4.14,8.07,7.64,10.44,3.5,2.37,8.13,3.56,13.88,3.56s10.25-1.18,13.71-3.56c3.46-2.37,6.01-5.85,7.64-10.44,1.63-4.59,2.45-10.19,2.45-16.8v-43.86c0-1.4.35-2.53,1.05-3.38.7-.86,1.79-1.28,3.27-1.28,1.55,0,2.66.45,3.33,1.34.66.9.99,2.04.99,3.44v47.36c0,7.23-1.25,13.49-3.73,18.78-2.49,5.29-6.14,9.35-10.96,12.19-4.82,2.84-10.73,4.26-17.73,4.26Z"/>
+    <path class="sub" fill="#fff" stroke="none" opacity="0" d="M772.47,617.84c-4.59,0-8.75-.7-12.48-2.1-3.73-1.4-6.84-3.07-9.33-5.02-1.56-1.09-2.76-2.25-3.62-3.5-.86-1.24-1.28-2.45-1.28-3.62,0-1.24.39-2.27,1.17-3.09.78-.82,1.79-1.23,3.03-1.23,1.71,0,2.97.53,3.79,1.58s1.88,2.2,3.21,3.44c1.24,1.09,3.11,2.31,5.6,3.67,2.49,1.36,5.95,2.04,10.38,2.04,3.34,0,6.43-.56,9.27-1.69,2.84-1.13,5.15-2.8,6.94-5.02,1.79-2.22,2.68-4.96,2.68-8.22,0-2.95-.6-5.38-1.81-7.29-1.21-1.9-2.82-3.46-4.84-4.67-2.02-1.2-4.26-2.22-6.71-3.03-2.45-.82-4.96-1.65-7.52-2.51-4.98-1.79-9.2-3.79-12.66-6.01-3.46-2.22-6.09-4.84-7.87-7.87-1.79-3.03-2.68-6.61-2.68-10.73s.78-7.5,2.33-10.38c1.55-2.88,3.63-5.23,6.24-7.06,2.6-1.83,5.5-3.19,8.69-4.08,3.19-.89,6.38-1.34,9.57-1.34s6.18.41,8.98,1.23c2.8.82,5.29,1.89,7.46,3.21,2.18,1.32,3.91,2.76,5.19,4.32,1.28,1.56,1.93,3.07,1.93,4.55,0,1.25-.39,2.24-1.17,2.97-.78.74-1.75,1.11-2.92,1.11-1.48,0-2.61-.5-3.38-1.52-.78-1.01-1.94-2.1-3.5-3.27-1.71-1.24-3.52-2.35-5.42-3.32-1.91-.97-4.45-1.46-7.64-1.46-5.44,0-9.74,1.38-12.89,4.14-3.15,2.76-4.72,6.32-4.72,10.67-.08,4.51,1.46,8.03,4.61,10.56,3.15,2.53,7.76,4.88,13.82,7.06,3.03,1.09,6.07,2.18,9.1,3.27,3.03,1.09,5.79,2.45,8.28,4.08,2.49,1.63,4.47,3.79,5.95,6.47,1.48,2.68,2.22,6.17,2.22,10.44s-.82,7.66-2.45,10.62c-1.63,2.96-3.79,5.37-6.47,7.23-2.68,1.87-5.68,3.23-8.98,4.08-3.31.86-6.67,1.28-10.09,1.28ZM764.89,504.69c-.39-.54-.9-1.01-1.52-1.4-.62-.39-1.28-.58-1.98-.58-1.09,0-1.96.33-2.62.99s-.99,1.38-.99,2.16c0,.62.12,1.19.35,1.69.23.51.54.99.93,1.46l8.98,10.85c.47.7.97,1.32,1.52,1.87.54.54,1.18.99,1.92,1.34.74.35,1.58.52,2.51.52s1.77-.17,2.51-.52c.74-.35,1.38-.82,1.92-1.4.54-.58,1.05-1.18,1.52-1.81l8.98-10.85c.39-.47.72-.95.99-1.46.27-.5.41-1.07.41-1.69,0-.78-.33-1.5-.99-2.16-.66-.66-1.54-.99-2.62-.99-.7,0-1.36.2-1.98.58-.62.39-1.17.86-1.63,1.4l-9.1,12.01-9.1-12.01Z"/>
+    <path class="sub" fill="#fff" stroke="none" opacity="0" d="M860.77,617.49c-.93,0-1.73-.21-2.39-.64-.66-.43-1.13-.99-1.4-1.69-.27-.7-.41-1.55-.41-2.57v-77.34c0-1.48.33-2.64.99-3.5.66-.86,1.73-1.28,3.21-1.28,1.55,0,2.68.43,3.38,1.28.7.86,1.05,1.94,1.05,3.27v77.81c0,1.32-.35,2.43-1.05,3.32-.7.89-1.83,1.34-3.38,1.34ZM909.53,617.49c-1.25,0-2.29-.41-3.15-1.22-.86-.82-1.87-1.92-3.03-3.33-2.26-2.72-4.75-5.64-7.47-8.75-2.72-3.11-5.52-6.26-8.4-9.45-2.88-3.19-5.68-6.26-8.4-9.22-2.72-2.95-5.25-5.66-7.58-8.11-2.33-2.45-4.32-4.41-5.95-5.89,6.07-6.14,12.11-12.4,18.14-18.78,6.03-6.38,12.03-12.64,18.02-18.78,1.09-1.17,2.1-2.12,3.03-2.86.93-.74,1.98-1.11,3.15-1.11s2.16.41,2.97,1.22c.82.82,1.23,1.81,1.23,2.97,0,.93-.25,1.77-.76,2.51-.51.74-1.38,1.69-2.62,2.86-3.66,3.42-7.29,6.9-10.91,10.44-3.62,3.54-7.21,7.06-10.79,10.56-3.58,3.5-7.19,7-10.85,10.5,1.32,1.25,3.03,2.9,5.13,4.96,2.1,2.06,4.39,4.41,6.88,7.06,2.49,2.64,5.05,5.37,7.7,8.17,2.64,2.8,5.19,5.54,7.64,8.22,2.45,2.68,4.65,5.07,6.59,7.17,1.32,1.48,2.27,2.68,2.86,3.62.58.93.87,1.91.87,2.92,0,1.09-.39,2.08-1.17,2.97-.78.89-1.83,1.34-3.15,1.34Z"/>
+    <path class="sub" fill="#fff" stroke="none" opacity="0" d="M968.33,617.84c-.7,0-1.42-.16-2.16-.47-.74-.31-1.34-.82-1.81-1.52-.47-.7-.7-1.48-.7-2.33,0-.93.27-2.06.82-3.38.54-1.32,1.28-3.15,2.22-5.48l24.85-62.41c.78-1.87,1.46-3.56,2.04-5.07.58-1.52,1.24-2.8,1.98-3.85.74-1.05,1.63-1.85,2.68-2.39,1.05-.54,2.39-.82,4.02-.82s3.05.27,4.02.82c.97.54,1.81,1.34,2.51,2.39s1.32,2.33,1.87,3.85c.54,1.52,1.17,3.21,1.87,5.07l25.08,62.53c.85,2.26,1.57,4.04,2.16,5.37.58,1.32.87,2.45.87,3.38,0,.86-.25,1.63-.76,2.33-.51.7-1.09,1.21-1.75,1.52-.66.31-1.38.47-2.16.47-1.09,0-1.98-.31-2.68-.93-.7-.62-1.34-1.65-1.92-3.09-.58-1.44-1.3-3.32-2.16-5.66l-7.23-19.6-1.28-3.27-8.17-20.65c-1.71-4.59-3.44-9.14-5.19-13.65-1.75-4.51-3.48-9.06-5.19-13.65-1.71,4.59-3.46,9.14-5.25,13.65-1.79,4.51-3.54,9.06-5.25,13.65l-8.05,20.53-1.4,3.38-7.12,19.6c-.86,2.33-1.58,4.22-2.16,5.66-.58,1.44-1.21,2.47-1.87,3.09-.66.62-1.58.93-2.74.93ZM978.01,590.08l2.45-7.23h43.86l2.1,7.23h-48.41Z"/>
+    <path id="l12A" d="" opacity="0"/>
+    <circle id="l12C" cx="0" cy="0" r="13.66" opacity="0"/>
+</g></svg>
+<div id="slides">
+  <!-- přepínač po intru: anatomie, pak dvojice den ↔ noc (káva / stout, vinyl / kytara) na půlené obrazovce: nahoře den, dole noc,
+       dráha stojí a jede jen kolečko; šipka na dvojici nejdřív přepne, pak jde dál -->
+  <div class="slide" id="anat"><svg viewBox="0 0 1920 1080">
+    <g id="anCam">
+      <image id="an7" href="web/final7.webp" width="1920" height="1080"/>
+      <image id="anN" href="web/noc.webp" width="1920" height="1080" opacity="0"/>
+      <image id="anD" href="web/den.webp" width="1920" height="1080" opacity="0"/>
+    </g>
+    <rect id="anDark" width="1920" height="1080" fill="#0d0907" opacity="0"/>
+    <!-- dráha a kolečko bílou linkou silnou jako linky loga na slidu s logem (7,6 × 0,85 = 6,46 px); výplň O Ondra zamítl -->
+    <g fill="none" stroke="#fff" stroke-width="6.46" stroke-linecap="round">
+      <path id="anTrack" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M717.82,278.08A242.18,242.18 0 0 1 1202.18,278.08L1202.18,801.92A242.18,242.18 0 0 1 717.82,801.92Z"/>
+      <circle id="anKnob" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" cx="960" cy="540" r="150.68"/>
+    </g>
+    <text id="anDen" class="lab" x="1272" y="294" opacity="0">DEN</text>
+    <text id="anNoc" class="lab" x="1272" y="818" opacity="0">NOC</text>
+  </svg></div>
+  <div class="slide pair" id="p1"><svg viewBox="0 0 1920 1080">
+    <svg width="1920" height="540"><image href="web/foto-9.webp" x="0.5" y="-269.42" width="1920" height="1080"/></svg>
+    <svg y="540" width="1920" height="540"><image href="web/foto-11.webp" x="4" y="-269.58" width="1920" height="1080"/></svg>
+    <rect class="dt" width="1920" height="540" fill="#0d0907" opacity="0"/>
+    <rect class="db" y="540" width="1920" height="540" fill="#0d0907" opacity=".55"/>
+    <g fill="none" stroke="#fff" stroke-width="6.46" stroke-linecap="round">   <!-- linka jako linky loga na slidu s logem (7,6 × 0,85) -->
+      <path d="M711.00,270.58A249.00,249.00 0 0 1 1209.00,270.58L1209.00,809.42A249.00,249.00 0 0 1 711.00,809.42Z"/>
+      <circle class="pk" cx="960" cy="270.58" r="155"/>
+    </g>
+    <!-- popisky stavu jako v anatomii: u krajních poloh kolečka, aktivní plně, druhý tlumeně; DEN tmavě na světlé půlce, NOC bíle na tmavé -->
+    <text class="lab pDen" x="1279" y="287" style="fill:#2A1C16">DEN</text>
+    <text class="lab pNoc" x="1279" y="826" opacity=".35">NOC</text>
+  </svg></div>
+  <div class="slide pair" id="p2"><svg viewBox="0 0 1920 1080">
+    <svg width="1920" height="540"><image href="web/foto-8.webp" x="-0.5" y="-267.92" width="1920" height="1080"/></svg>
+    <svg y="540" width="1920" height="540"><image href="web/foto-10.webp" x="-1.5" y="-266.08" width="1920" height="1080"/></svg>
+    <rect class="dt" width="1920" height="540" fill="#0d0907" opacity="0"/>
+    <rect class="db" y="540" width="1920" height="540" fill="#0d0907" opacity=".55"/>
+    <g fill="none" stroke="#fff" stroke-width="6.46" stroke-linecap="round">   <!-- linka jako linky loga na slidu s logem (7,6 × 0,85) -->
+      <path d="M711.00,270.58A249.00,249.00 0 0 1 1209.00,270.58L1209.00,809.42A249.00,249.00 0 0 1 711.00,809.42Z"/>
+      <circle class="pk" cx="960" cy="270.58" r="155"/>
+    </g>
+    <!-- popisky stavu jako v anatomii: u krajních poloh kolečka, aktivní plně, druhý tlumeně; DEN tmavě na světlé půlce, NOC bíle na tmavé -->
+    <text class="lab pDen" x="1279" y="287" style="fill:#2A1C16">DEN</text>
+    <text class="lab pNoc" x="1279" y="826" opacity=".35">NOC</text>
+  </svg></div>
+</div>
+<script>
+/* Intro na výloze (storyboard final/1–5): skleněné O z loga, otvor = kolečko přepínače.
+   1 den (otvor nahoře) → 2 otvor sjede dolů a noc se s ním postupně prolne
+   → 3 O se rozdělí na dva kanály: vlevo den (otvor nahoře), vpravo noc (otvor dole)
+   → 4 kanály se slijí do jednoho O na předělu, otvor uprostřed jako v logu, sklo se rozzáří
+   → 5 O odjede doprava a od něj vyjedou a narostou písmena STERE (skleněný nápis přes výlohu)
+   → finále (storyboard 7): denní polovina se rozplyne do noci, do otvoru O se vloží jantarový kotouč; intro tu skončí a stojí (klik / mezerník = znovu).
+   Rozměry = logo 1 : 1 (O 208,78 × 434,57, otvor r 64,95), nápis posunutý o (318, 322).
+   Písmena: mapy vzdáleností web/pismena-a.png (S, T, E) a pismena-b.png (R, E) z SVG/logo_1.svg.
+   Ladění: #t=12 zastaví čas. */
+const W = 1920, H = 1080;
+const O = { cx: 960, top: 322, w: 208.78, h: 434.57, hole: 64.95 };
+const R = O.w / 2;
+const HOLE_UP = O.top + R, HOLE_DOWN = O.top + O.h - R, HOLE_MID = O.top + O.h / 2;
+const X_LEFT = 480, X_RIGHT = 1440, SPLIT_X = 960;   // kanály podle storyboardu 3
+const LOGO_X = 318, O_FINAL = 1501;                // O na místě v nápisu (doladěno na final/7.png)
+const L_SHIFT = [-7, 3];                           // průměrný posun písmen (pro výpočty pohybu)
+// přesné posuny jednotlivých písmen S, T, E, R, E změřené proti final/7.png (px)
+const L_DX = [-8, -8, -9, -8, -9], L_DY = [.5, .5, .5, .5, .5];   // změřeno na světlém lemu nového final/7.png
+// O ve final/7.png: střed 1501,5, horní okraj 322,5, stejná velikost jako logo, otvor y 539,5
+const O_FIN = { x: 1501.5, R: 104.39, y0: 322.5 + 104.39, y1: 322.5 + 434.57 - 104.39, hole: 539.5 };
+const O_BASE = { R, y0: O.top + R, y1: O.top + O.h - R };
+// středy písmen S, T, E, R, E v nápisu (px) a pořadí vysouvání (od O doleva)
+const LETTER_C = [426, 643.5, 846.5, 1064, 1287];
+const LETTER_DELAY = [0, .08, .16, .24, .32], LETTER_DUR = .5;      // písmena rostou hned, zleva doprava za odjíždějícím O
+const LETTER_RIGHT = [523, 725, 928, 1161, 1368];                  // pravý okraj písmen – rostou, až je O mine
+
+const SEG = [
+  ['den', 1.6], ['doNoci', 1.8], ['noc', 1.2], ['split', 1.7], ['stereo', 1.8],
+  ['spojit', 1.5], ['logo', 1.4], ['finale', 3.8], ['konec', 0.01]
+];
+const END = SEG.reduce((s, x) => s + x[1], 0);   // lineární časová osa jen pro ladění (#t=) a export snímků
+
+// brand easing cubic-bezier(.65,0,.35,1)
+function bez(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  return t => {
+    let x = t;
+    for (let i = 0; i < 8; i++) { const f = ((ax * x + bx) * x + cx) * x - t, d = (3 * ax * x + 2 * bx) * x + cx; if (Math.abs(d) < 1e-6) break; x -= f / d; }
+    return ((ay * x + by) * x + cy) * x;
+  };
+}
+const ease = bez(.65, 0, .35, 1);
+const lerp = (a, b, k) => a + (b - a) * k;
+const clamp = v => Math.max(0, Math.min(1, v));
+
+// nápis: k = 0 jen O uprostřed, k = 1 O na místě a písmena venku
+function wordmark(k) {
+  const ox = lerp(O.cx, O_FINAL, ease(k));                                // O jede na své místo a za sebou nechává písmena
+  const prog = LETTER_DELAY.map((dl, i) => ease(Math.min(clamp((k - dl) / LETTER_DUR), clamp((ox - R - LETTER_RIGHT[i] + 40) / 60))));
+  const off = prog.map(() => 0);                                          // písmena stojí na svém místě
+  const grow = prog.map(p => (1 - p) * 46);                               // a narostou z tenké linky
+  // záře písmene naběhne až za jeho tvarem (nejdřív sklo, pak světlo)
+  const lb = prog.map(p => Math.pow(clamp((p - .55) / .45), 2));
+  return { wipe: 1, split: 1, glow: 1, a: { x: ox, hole: HOLE_MID }, b: null, letters: off.map(o => o + L_SHIFT[0]), grow, lb };
+}
+
+// varianta „neon“: O nejdřív dojede na místo, pak se písmena S → E rozblikají jako neonové trubice a dosvítí do skla
+const FLICK = [0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1];          // vzor blikání při zapalování
+function neon(k) {
+  const ox = lerp(O.cx, O_FINAL, ease(clamp(k / .3)));
+  const lit = [0, 1, 2, 3, 4].map(i => {
+    const p = clamp((k - .26 - i * .085) / .2);                // každé písmeno se zapaluje 0,2 délky kroku
+    if (p <= 0) return [0, 0];
+    if (p < .55) { const f = FLICK[Math.floor(p / .55 * FLICK.length)]; return [f * .55, f * 1.6]; }   // jen svítící obrys, bliká
+    const q = (p - .55) / .45;
+    return [lerp(.55, 1, ease(q)), lerp(1.6, 1, ease(q))];    // dosvítí: tělo skla naplní, záře se usadí
+  });
+  return { wipe: 1, split: 1, glow: 1, a: { x: ox, hole: HOLE_MID }, b: null,
+           letters: [0, 0, 0, 0, 0].map(o => o + L_SHIFT[0]), grow: [0, 0, 0, 0, 0],
+           lw: lit.map(l => l[0]), lb: lit.map(l => l[1]) };
+}
+
+// varianta „pivo“: O dojede na místo, zůstanou po něm prázdné skleněné obrysy písmen,
+// ty se zespodu naplní pivem s pěnou (zleva doprava), pak pivo „prosvítí“ do čistého zářícího skla
+const L_BOT = 760, L_TOP = 318;
+function beer(k) {
+  const ox = lerp(O.cx, O_FINAL, ease(clamp(k / .26)));
+  const glass = ease(clamp((k - .14) / .22));                 // písmena se jemně objeví jako čisté sklo
+  const p = clamp((k - .3) / .55);
+  const level = lerp(L_BOT + 12, L_TOP + 4, 1 - Math.pow(1 - p, 2.6));   // hladina stoupá a ke konci zpomalí, jako když se dočepovává
+  return { wipe: 1, split: 1, glow: lerp(.6, 1, clamp((k - .55) / .3)), a: { x: ox, hole: HOLE_MID }, b: null,
+           letters: [0, 0, 0, 0, 0].map(o => o + L_SHIFT[0]), grow: [0, 0, 0, 0, 0],
+           lw: [glass, glass, glass, glass, glass], lb: [1, 1, 1, 1, 1],
+           fill: [level, level, level, level, level], settle: [1, 1, 1, 1, 1],
+           wAmp: 3.5 * (1 - p) + .6, tint: 1 - ease(clamp((k - .82) / .18)) };
+}
+
+// varianta „odlesk“: O dojede na místo, pak výlohou zleva doprava přejede měkký šikmý pruh světla;
+// kudy projde, tam sklo chytí světlo a písmena se ukážou (písmena se nehýbou, jen se objeví)
+const SWEEP_FROM = -350, SWEEP_TO = 2350;
+function sweep(k) {
+  const ox = lerp(O.cx, O_FINAL, ease(clamp(k / .28)));
+  const sx = lerp(SWEEP_FROM, SWEEP_TO, bez(.45, 0, .55, 1)(clamp((k - .22) / .6)));
+  return { wipe: 1, split: 1, glow: 1, a: { x: ox, hole: HOLE_MID }, b: null,
+           letters: [0, 0, 0, 0, 0].map(o => o + L_SHIFT[0]), grow: [0, 0, 0, 0, 0], sweepX: sx };
+}
+
+// varianta „zpoza O“ (jako stereo-logo-intro): O dojede na místo, pak celé slovo vyjede zpoza skleněného O doleva.
+// Písmena jsou fyzicky za O – zakrývá je jeho obrys (žádná neviditelná hrana), vpravo od středu O nejsou vidět vůbec.
+function slide(k) {
+  const m = ease(clamp(k / .3));
+  const ox = lerp(O.cx, O_FIN.x, m);
+  const off = lerp(O_FIN.x - O_FIN.R + 8 - (322 + L_SHIFT[0]), 0, ease(clamp((k - .28) / .5)));
+  return { wipe: 1, split: 1, glow: 1, a: { x: ox, hole: lerp(HOLE_MID, O_FIN.hole, m) }, b: null,
+           og: [lerp(O_BASE.R, O_FIN.R, m), lerp(O_BASE.y0, O_FIN.y0, m), lerp(O_BASE.y1, O_FIN.y1, m)], discC: [ox + 1.8, lerp(HOLE_MID, O_FIN.hole, m) + 1.8, 63.7],
+           letters: L_DX.map(dx => off + dx), ly: L_DY, grow: [-.5, -.5, -.5, -.5, -.5], occ: 1, clear: clamp((k - .5) / .4) };
+}
+
+function state(t) {
+  t = Math.max(0, Math.min(t, END - 1e-4));
+  let name = SEG[0][0], raw = 0;
+  for (const [n, d] of SEG) { if (t < d) { name = n; raw = t / d; break; } t -= d; }
+  return segState(name, raw);
+}
+// stav jednoho úseku animace v čase raw 0..1
+function segState(name, raw) {
+  const k = ease(raw);
+  const sep = k => ({ wipe: 1, split: k, a: { x: lerp(O.cx, X_RIGHT, k), hole: HOLE_DOWN }, b: { x: lerp(O.cx, X_LEFT, k), hole: lerp(HOLE_DOWN, HOLE_UP, k) } });
+  switch (name) {
+    case 'den': return { wipe: 0, split: 0, a: { x: O.cx, hole: HOLE_UP }, b: null };
+    case 'doNoci': return { wipe: k, split: 0, a: { x: O.cx, hole: lerp(HOLE_UP, HOLE_DOWN, k) }, b: null };
+    case 'noc': return { wipe: 1, split: 0, a: { x: O.cx, hole: HOLE_DOWN }, b: null };
+    case 'zpetDen': return { wipe: 1 - k, split: 0, a: { x: O.cx, hole: lerp(HOLE_DOWN, HOLE_UP, k) }, b: null };
+    case 'split': return sep(k);
+    case 'stereo': return sep(1);
+    case 'spojit': return { wipe: 1, split: 1, glow: k, a: { x: lerp(X_RIGHT, O.cx, k), hole: lerp(HOLE_DOWN, HOLE_MID, k) }, b: { x: lerp(X_LEFT, O.cx, k), hole: lerp(HOLE_UP, HOLE_MID, k) } };
+    case 'logo': return { wipe: 1, split: 1, glow: 1, a: { x: O.cx, hole: HOLE_MID }, b: null };
+    case 'napis': return wordmark(raw);
+    case 'napisStoji': return wordmark(1);
+    // finále: denní polovina se rozplyne do noci – předěl se při tom rozmaže, aby nevznikl ostrý obdélník;
+    //    sklo se rozzáří o něco víc a do otvoru O se vloží matný skleněný kotouč
+    //    a celé se to prolne do hotového snímku storyboardu 7 (final/7.png)
+    // storyboard 4 → 7 rovnou: O odjede na místo, písmena narostou, celá výloha se zároveň prolne do noci
+    //    a ve druhé půlce se všechno prolne do hotového snímku final/7.png
+    case 'finale': return { ...slide(raw), wipe: 1, feather: lerp(1.5, 900, k), dayMul: 1 - k, glow: lerp(1, 1.3, k), disc: k, fin: ease(clamp((raw - .76) / .24)) };
+    case 'konec': return { ...slide(1), wipe: 1, dayMul: 0, glow: 1.3, disc: 1, fin: 1 };
+    case 'kNoci': return { ...wordmark(1), wipe: 1, feather: lerp(1.5, 900, k), dayMul: 1 - k, glow: lerp(1, 1.3, k), disc: k, fin: k };
+    case 'nocNapis': return { ...wordmark(1), wipe: 1, dayMul: 0, glow: 1.3, disc: 1, fin: 1 };
+  }
+}
+
+const VS = `attribute vec2 p; varying vec2 uv; void main(){ uv = p*.5+.5; gl_Position = vec4(p,0.,1.); }`;
+const FS = `
+precision highp float;
+varying vec2 uv;
+uniform sampler2D day, night, la, lb, fin, p12;
+uniform float finMix;
+uniform float p12On, hrad, lsc, whiteR, whiteOn;   // slide 12: podklad 12.png, poloměr otvoru O, měřítko písmen, bílá vlna
+uniform vec2 lorg;                               // kde leží počátek loga (v textuře písmen je na 318, 322)
+uniform float fade, splitX, splitF, dayMul, glow, time, letters, disc, sweepX, occOn;
+uniform vec3 oa, ob;      // x středu, y otvoru, viditelnost
+uniform vec4 lx;          // posun písmen S, T, E, R
+uniform float lx5;        // posun druhého E
+uniform vec4 lg;          // ztenčení písmen při vyrůstání (px)
+uniform vec4 ly; uniform float ly5;   // svislý posun jednotlivých písmen
+uniform vec3 og;                      // geometrie O: poloměr, y středu horního a dolního oblouku
+uniform float clarity;
+uniform vec3 discC;                 // kotouč: střed x, y a poloměr               // 0 = mléčné sklo, 1 = čisté sklo jako ve final/7.png
+uniform float lg5;
+uniform vec4 lw, lbr;       // viditelnost a jas jednotlivých písmen (neon)
+uniform float lw5, lbr5;
+float LW = 1., LB = 1., LF = 0., LS = 1.;   // váha, jas a hladina piva nejbližšího písmene (nastaví sdL)
+uniform vec4 lf, ls; uniform float lf5, ls5, tint, fillMode, wAmp;
+uniform vec2 res;
+const float R = ${R.toFixed(3)}, HR = ${O.hole.toFixed(3)};
+
+
+float nightAt(vec2 px){
+  float d = smoothstep(splitX + splitF, splitX - splitF, px.x);
+  return fade * (1. - d * dayMul);
+}
+vec3 bg(vec2 px){ vec2 t = clamp(px / res, vec2(0.), vec2(1.));
+  if (p12On > .5) return texture2D(p12, t).rgb;
+  return mix(texture2D(day, t).rgb, texture2D(night, t).rgb, nightAt(px)); }
+
+float sdO(vec2 p, vec3 o){
+  if (o.z < .5) return 1e4;
+  float cap = length(p - vec2(o.x, clamp(p.y, og.y, og.z))) - og.x;
+  float hole = length(p - vec2(o.x, o.y)) - hrad;
+  return max(cap, -hole);
+}
+// mapa vzdáleností má rozsah ±64 px; dál = „daleko“ (jinak by se záře písmen rozlila přes celý obraz)
+float dec(float v){ float d = (v * 255. - 128.) * .5; return d > 63. ? 1e4 : d; }
+float sdL(vec2 p){
+  if (letters < .5) return 1e4;
+  float d = 1e4, e;
+  e = dec(texture2D(la, (vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.x, ly.x)) / res).r) * lsc + lg.x; if (lw.x > .01 && e < d) { d = e; LW = lw.x; LB = lbr.x; LF = lf.x; LS = ls.x; }
+  e = dec(texture2D(la, (vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.y, ly.y)) / res).g) * lsc + lg.y; if (lw.y > .01 && e < d) { d = e; LW = lw.y; LB = lbr.y; LF = lf.y; LS = ls.y; }
+  e = dec(texture2D(la, (vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.z, ly.z)) / res).b) * lsc + lg.z; if (lw.z > .01 && e < d) { d = e; LW = lw.z; LB = lbr.z; LF = lf.z; LS = ls.z; }
+  e = dec(texture2D(lb, (vec2(318., 322.) + (p - lorg) / lsc - vec2(lx.w, ly.w)) / res).r) * lsc + lg.w; if (lw.w > .01 && e < d) { d = e; LW = lw.w; LB = lbr.w; LF = lf.w; LS = ls.w; }
+  e = dec(texture2D(lb, (vec2(318., 322.) + (p - lorg) / lsc - vec2(lx5, ly5)) / res).g) * lsc + lg5;   if (lw5 > .01 && e < d) { d = e; LW = lw5; LB = lbr5; LF = lf5; LS = ls5; }
+  return d;
+}
+float sdf(vec2 p){ return min(min(sdO(p, oa), sdO(p, ob)), sdL(p)); }
+
+void main(){
+  vec2 px = vec2(uv.x * res.x, (1. - uv.y) * res.y);   // pixely, y dolů
+  float dO = min(sdO(px, oa), sdO(px, ob));
+  float dL = sdL(px);
+  // písmena za O: zakryje je obrys O (měkce), vpravo od středu O nejsou vidět
+  float occ = 1.;
+  if (occOn > .5) {
+    float dP = length(px - vec2(oa.x, clamp(px.y, og.y, og.z))) - og.x;
+    occ = smoothstep(-3., 3., dP) * step(px.x, oa.x);
+    if (occ < .5 && dL < 0.) dL = 1e4;
+  }
+  float d = min(dO, dL);
+  bool onL = dL < dO;
+  float wL = onL ? LW : 1., bL = onL ? LB : 1.;
+  vec3 col = bg(px);
+  // odlesk: šikmý pruh světla; vlevo od něj jsou písmena odhalená
+  float su = px.x + (px.y - 540.) * .35;
+  float reveal = smoothstep(sweepX + 40., sweepX - 170., su);
+  float sheen = exp(-pow((su - sweepX) / 60., 2.));
+  col += sheen * .08 * smoothstep(320., 360., px.y) * smoothstep(900., 860., px.y);   // pruh světla klouže i po skle výlohy
+  // sklo podle final/7.png (změřeno): vnitřek čirý beze změny jasu, lom jen u hrany (do ~24 px, posun až 4 px),
+  // lehké zjemnění obrazu a tenký světlý lem přímo na hraně (±2 px, mírně studený); žádný lesk ani mléčnost
+  float vis = onL ? step(.01, wL) * reveal * occ : 1.;
+  if (d < 6.) {
+    vec2 e = vec2(1., 0.);
+    vec2 n = normalize(vec2(sdf(px + e.xy) - sdf(px - e.xy), sdf(px + e.yx) - sdf(px - e.yx)) + 1e-5);
+    // lom podle 7.png: u hrany sklo ukazuje obraz posunutý dovnitř (asi 5 px u hrany, do 18 px doznívá),
+    // u spodních hran silněji (zvětšené „elipsy“ podlahy)
+    float ins = max(-d, 0.);
+    // kolem otvoru O (kotouče) láme sklo výrazněji – na 7.png se kolem něj ohýbají příčky dveří
+    float nearHole = onL ? 0. : 1. - smoothstep(0., 30., abs(length(px - oa.xy) - hrad));
+    vec2 off = -n * 5. * (1. - smoothstep(0., 18. + 16. * nearHole, ins)) * (1. + 1.5 * max(n.y, 0.) + 2. * nearHole);
+    vec3 g = vec3(0.);
+    for (int i = 0; i < 8; i++) { float a = float(i) * 0.785398; g += bg(px + off + vec2(cos(a), sin(a)) * .9); }
+    g = g / 8.;
+    float body = onL ? smoothstep(.5, 1., wL) : 1.;
+    // pivo: hladina s vlnkou, nahoře pěna (varianta, teď nepoužitá)
+    if (onL && fillMode > .5) {
+      float surf = LF + sin(px.x * .011 + time * 2.1) * wAmp + sin(px.x * .027 - time * 1.4) * wAmp * .4;
+      float liq = smoothstep(surf - 1.5, surf + 1.5, px.y);
+      float fm = liq * (1. - smoothstep(surf + 5., surf + 12., px.y));
+      vec3 stout = mix(g, g * vec3(.34, .2, .13) + vec3(.035, .014, .008), .78);
+      vec3 pena = mix(g, vec3(.93, .86, .73), .78);
+      g = mix(g, mix(stout, pena, fm), liq * tint);
+      body = smoothstep(0., 1., wL);
+    }
+    g += sheen * .6 * vec3(1., .96, .9);
+    col = mix(col, g, smoothstep(.5, -.5, d) * body * vis);
+    // lem: u otvoru O s kotoučem slabší (ve final/7.png splývá s okrajem kotouče)
+    // lem jako na 7.png: ostrá světlá linka ~3 px přímo na hraně
+    float rimP = exp(-pow(d / 1.2, 2.));
+    col += rimP * vec3(.56, .53, .49) * vis * (onL ? smoothstep(0., .3, wL) : 1.);
+  }
+  // kotouč v otvoru O: ve final/7.png je to jen čirý kruh s tenkým lemem (střed 1501,8 / 539,8, r 63,7)
+  if (disc > 0.) {
+    float dd = length(px - discC.xy) - discC.z;
+    col += 0. * dd * disc;   // kotouč splývá s okrajem otvoru (na 7.png jediný lem)
+  }
+  // záře kolem skla vypnutá (7. 10. 2026 – Ondra: bez záře, i ve final/7.png)
+  float gr = fract(sin(dot(px + time * 61.7, vec2(12.9898, 78.233))) * 43758.5453);
+  col += (gr - .5) * .025;
+  col = mix(col, texture2D(fin, px / res).rgb, finMix);
+  // slide 12: bílá se rozlévá od otvoru O ven (měkká čela 40 px), sklo se mění v plnou bílou
+  if (whiteOn > .5) col = mix(col, vec3(1.), smoothstep(whiteR, whiteR - 40., length(px - oa.xy)) * smoothstep(.6, -.6, d));
+  gl_FragColor = vec4(col, 1.);
+}`;
+
+const cv = document.getElementById('c');
+const gl = cv.getContext('webgl', { antialias: false, preserveDrawingBuffer: true });
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s); return s; }
+const pr = gl.createProgram();
+gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(pr, n);
+gl.uniform2f(U('res'), W, H);
+gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+
+function tex(unit, src, n = 0) {
+  return new Promise(ok => { const im = new Image();
+    im.onerror = () => setTimeout(() => tex(unit, src, n + 1).then(ok), 500 * (n + 1));   // výpadek sítě: zkusit znovu (jinak by zůstala černá plocha)
+    im.onload = () => {
+    const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, im);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    ok(); }; im.src = n ? src + '?r=' + n : src; });
+}
+
+function draw(s, t) {
+  gl.uniform1f(U('fade'), s.wipe);
+  gl.uniform1f(U('splitX'), s.split <= 1 ? lerp(-2, SPLIT_X, s.split) : lerp(SPLIT_X, W + 2, s.split - 1));
+  gl.uniform1f(U('glow'), s.glow || 0);
+  gl.uniform1f(U('disc'), s.disc || 0);
+  gl.uniform1f(U('splitF'), s.feather || 1.5);
+  gl.uniform1f(U('finMix'), s.fin || 0);
+  gl.uniform1f(U('p12On'), s.p12 || 0); gl.uniform1f(U('hrad'), s.hrad || O.hole); gl.uniform1f(U('lsc'), s.lsc || 1);
+  const LO = s.lorg || [318, 322]; gl.uniform2f(U('lorg'), LO[0], LO[1]);
+  gl.uniform1f(U('whiteOn'), s.whiteOn || 0); gl.uniform1f(U('whiteR'), s.whiteR || 0);
+  gl.uniform1f(U('sweepX'), s.sweepX === undefined ? 1e5 : s.sweepX);
+  gl.uniform1f(U('occOn'), s.occ || 0);
+  const OG = s.og || [O_BASE.R, O_BASE.y0, O_BASE.y1]; gl.uniform3f(U('og'), OG[0], OG[1], OG[2]);
+  gl.uniform1f(U('clarity'), s.clear || 0);
+  const DC = s.discC || [s.a.x, s.a.hole, O.hole - 1.5]; gl.uniform3f(U('discC'), DC[0], DC[1], DC[2]);
+  const LYv = s.ly || [L_SHIFT[1], L_SHIFT[1], L_SHIFT[1], L_SHIFT[1], L_SHIFT[1]];
+  gl.uniform4f(U('ly'), LYv[0], LYv[1], LYv[2], LYv[3]); gl.uniform1f(U('ly5'), LYv[4]);
+  gl.uniform1f(U('dayMul'), s.dayMul === undefined ? 1 : s.dayMul);
+  gl.uniform3f(U('oa'), s.a.x, s.a.hole, 1);
+  gl.uniform3f(U('ob'), s.b ? s.b.x : 0, s.b ? s.b.hole : 0, s.b ? 1 : 0);
+  const L = s.letters;
+  gl.uniform1f(U('letters'), L ? 1 : 0);
+  if (L) { gl.uniform4f(U('lx'), L[0], L[1], L[2], L[3]); gl.uniform1f(U('lx5'), L[4]);
+    const G = s.grow; gl.uniform4f(U('lg'), G[0], G[1], G[2], G[3]); gl.uniform1f(U('lg5'), G[4]);
+    const A = s.lw || [1, 1, 1, 1, 1], B = s.lb || [1, 1, 1, 1, 1];
+    gl.uniform4f(U('lw'), A[0], A[1], A[2], A[3]); gl.uniform1f(U('lw5'), A[4]);
+    gl.uniform4f(U('lbr'), B[0], B[1], B[2], B[3]); gl.uniform1f(U('lbr5'), B[4]);
+    const F = s.fill; gl.uniform1f(U('fillMode'), F ? 1 : 0);
+    if (F) { gl.uniform4f(U('lf'), F[0], F[1], F[2], F[3]); gl.uniform1f(U('lf5'), F[4]); gl.uniform1f(U('tint'), s.tint); gl.uniform1f(U('wAmp'), s.wAmp || 0);
+      const Q = s.settle; gl.uniform4f(U('ls'), Q[0], Q[1], Q[2], Q[3]); gl.uniform1f(U('ls5'), Q[4]); } }
+  gl.uniform1f(U('time'), Math.floor(t * 24) / 24);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+// ---------- slide 12: celé logo na noční výloze (final/12.png) ----------
+// logo na 85 % velikosti intra, vycentrované ve snímku (rámeček loga = viewBox logo_1.svg 1297,67 × 617,84)
+const L12 = { s: .85, x: 960 - 1297.67 * .85 / 2, y: 540 - 617.84 * .85 / 2 };
+const T12 = { white: [.5, 1.9], lineL: [2.0, 2.5], subs: 2.35, subDur: .3, subStep: .08,
+              armOut: [3.2, 3.75], ring: [3.8, 4.2], bend: [4.3, 5.1] };
+const END12 = 5.1;
+const seg12 = (t, a) => clamp((t - a[0]) / (a[1] - a[0]));
+function slide12State(t) {
+  const s = L12.s, top = L12.y, ox = L12.x + 1192.25 * s, hy = top + 217.285 * s;
+  return { wipe: 1, split: 0, p12: 1, a: { x: ox, hole: hy }, b: null, hrad: O.hole * s,
+           og: [R * s, top + R * s, top + (O.h - R) * s],
+           letters: [0, 0, 0, 0, 0], ly: [0, 0, 0, 0, 0], grow: [0, 0, 0, 0, 0], lsc: s, lorg: [L12.x, L12.y],
+           whiteOn: t > T12.white[0] ? 1 : 0, whiteR: lerp(O.hole * s - 2, 1250, ease(seg12(t, T12.white))) };
+}
+// jehla (pravá linka) v souřadnicích logo_1.svg: vodorovně 86,13, oblouk r 44,07 o 45°, šikmo 94,84, kroužek r 13,66
+const ARM = { x: 1087.86, y: 579.21, l1: 86.13, rho: 44.07, l2: 94.84, r: 13.66 };
+ARM.tot = ARM.l1 + ARM.rho * Math.PI / 4 + ARM.l2;
+function armGeom(len, th) {
+  let d, ex, ey;
+  if (th < 1e-4) { d = `M${ARM.x},${ARM.y}h${len.toFixed(2)}`; ex = ARM.x + len; ey = ARM.y; }
+  else {
+    const x1 = ARM.x + ARM.l1, ax = x1 + ARM.rho * Math.sin(th), ay = ARM.y - ARM.rho * (1 - Math.cos(th));
+    const l2 = ARM.l2 + ARM.rho * (Math.PI / 4 - th), dx = l2 * Math.cos(th), dy = -l2 * Math.sin(th);
+    d = `M${ARM.x},${ARM.y}h${ARM.l1}A${ARM.rho},${ARM.rho} 0 0 0 ${ax.toFixed(2)},${ay.toFixed(2)}l${dx.toFixed(2)},${dy.toFixed(2)}`;
+    ex = ax + dx; ey = ay + dy;
+  }
+  return { d, rc: [ex + ARM.r * Math.cos(th), ey - ARM.r * Math.sin(th)] };
+}
+// v hotovém tvaru dosedne kroužek přesně na místo z logo_1.svg (1280,21 / 488,14)
+const ARM_FIX = (g => [1280.21 - g.rc[0], 488.14 - g.rc[1]])(armGeom(ARM.tot, Math.PI / 4));
+const L12el = { svg: document.getElementById('l12'), g: document.getElementById('l12g'), line: document.getElementById('l12L'),
+                subs: [...document.querySelectorAll('#l12 .sub')], arm: document.getElementById('l12A'), ring: document.getElementById('l12C') };
+L12el.g.setAttribute('transform', `translate(${L12.x.toFixed(2)} ${L12.y}) scale(${L12.s})`);
+const RING_C = 2 * Math.PI * ARM.r;
+L12el.ring.style.strokeDasharray = RING_C;
+// přenoska ve smyčce po vykreslení loga (Ondra 11. 10.): rameno za ohybem (otočný bod = konec vodorovné linky) jezdí
+// z klidové polohy 45° dolů o 15° a zpět – pohyb 1,4 s brand easingem, v krajních polohách stojí 1,1 s
+const PRENOSKA = { amp: Math.PI / 12, move: 1.4, hold: 1.1 };
+function prenoskaTh(t) {
+  const c = 2 * (PRENOSKA.hold + PRENOSKA.move); t = ((t % c) + c) % c;
+  let k;
+  if (t < PRENOSKA.hold) k = 0;
+  else if (t < PRENOSKA.hold + PRENOSKA.move) k = ease((t - PRENOSKA.hold) / PRENOSKA.move);
+  else if (t < 2 * PRENOSKA.hold + PRENOSKA.move) k = 1;
+  else k = 1 - ease((t - 2 * PRENOSKA.hold - PRENOSKA.move) / PRENOSKA.move);
+  return Math.PI / 4 - PRENOSKA.amp * k;
+}
+function update12(t, thLoop) {
+  const kL = ease(seg12(t, T12.lineL));
+  L12el.line.setAttribute('x2', lerp(3.8, 212.58, kL)); L12el.line.setAttribute('opacity', kL > 0 ? 1 : 0);
+  L12el.subs.forEach((p, i) => {
+    const k = ease(clamp((t - T12.subs - i * T12.subStep) / T12.subDur));
+    p.setAttribute('opacity', k); p.setAttribute('transform', `translate(0 ${((1 - k) * 14).toFixed(2)})`);
+  });
+  const kA = ease(seg12(t, T12.armOut)), kR = ease(seg12(t, T12.ring)), kB = ease(seg12(t, T12.bend));
+  const th = thLoop !== undefined ? thLoop : kB * Math.PI / 4, g = armGeom(ARM.tot * kA, th);
+  L12el.arm.setAttribute('d', g.d); L12el.arm.setAttribute('opacity', kA > 0 ? 1 : 0);
+  const cx = g.rc[0] + ARM_FIX[0] * kB, cy = g.rc[1] + ARM_FIX[1] * kB;
+  L12el.ring.setAttribute('cx', cx.toFixed(2)); L12el.ring.setAttribute('cy', cy.toFixed(2));
+  L12el.ring.setAttribute('transform', `rotate(${(180 - th * 180 / Math.PI).toFixed(2)} ${cx.toFixed(2)} ${cy.toFixed(2)})`);   // kreslí se od dotyku s linkou
+  L12el.ring.style.strokeDashoffset = RING_C * (1 - kR); L12el.ring.setAttribute('opacity', kR > 0 ? 1 : 0);
+}
+
+// ---------- slidy s přepínačem (po intru) ----------
+const AN = { z: 2.32, ox: 1501.5, oy: 539.8, k: 261.92 };   // zvětšení 2,32: fotka musí pokrýt celý snímek i s O uprostřed
+const T_AN = { zoom: [0, 1.4], draw: [.9, 1.7], loop0: 2.4, first: 1.0, move: 1.4, hold: 1.1 };
+const PAIR_T = 538.84, PAIR_MOVE = 1.4;
+const $ = id => document.getElementById(id), nowS = () => performance.now() / 1000;
+const anEl = { cam: $('anCam'), i7: $('an7'), iN: $('anN'), iD: $('anD'), dark: $('anDark'), track: $('anTrack'), knob: $('anKnob'), den: $('anDen'), noc: $('anNoc') };
+// O z loga jako jedna cesta: pilulka (střed cx, rovná část y0–y1, poloměr R) minus kruhový otvor (cy, r) – evenodd
+function oPath(cx, y0, y1, R, cy, r) {
+  const f = v => v.toFixed(2);
+  return `M${f(cx - R)},${f(y0)}A${f(R)},${f(R)} 0 0 1 ${f(cx + R)},${f(y0)}L${f(cx + R)},${f(y1)}A${f(R)},${f(R)} 0 0 1 ${f(cx - R)},${f(y1)}Z`
+       + `M${f(cx - r)},${f(cy)}a${f(r)},${f(r)} 0 1 0 ${f(2 * r)},0a${f(r)},${f(r)} 0 1 0 ${f(-2 * r)},0Z`;
+}
+// poloha kolečka v anatomii: 0 = střed (logo), +1 = dole (noc), −1 = nahoře (den); po dojetí jezdí dokola noc ↔ den
+function anKnobPos(t) {
+  if (t < T_AN.loop0) return 0;
+  t -= T_AN.loop0;
+  if (t < T_AN.first) return ease(t / T_AN.first);                 // ze středu dolů do noci
+  t -= T_AN.first;
+  const cyc = 2 * (T_AN.hold + T_AN.move); t %= cyc;
+  if (t < T_AN.hold) return 1;
+  if (t < T_AN.hold + T_AN.move) return 1 - 2 * ease((t - T_AN.hold) / T_AN.move);
+  if (t < 2 * T_AN.hold + T_AN.move) return -1;
+  return -1 + 2 * ease((t - 2 * T_AN.hold - T_AN.move) / T_AN.move);
+}
+function updateAnat(t) {
+  const kz = ease(clamp((t - T_AN.zoom[0]) / (T_AN.zoom[1] - T_AN.zoom[0])));
+  const z = lerp(1, AN.z, kz), cx = lerp(960, AN.ox, kz), cy = lerp(540, AN.oy, kz);
+  anEl.cam.setAttribute('transform', `translate(${(960 - z * cx).toFixed(2)} ${(540 - z * cy).toFixed(2)}) scale(${z.toFixed(4)})`);
+  const kd = ease(clamp((t - T_AN.draw[0]) / (T_AN.draw[1] - T_AN.draw[0])));
+  anEl.track.style.strokeDashoffset = 1 - kd; anEl.knob.style.strokeDashoffset = 1 - kd;
+  const p = anKnobPos(t);
+  anEl.knob.setAttribute('cy', (540 + p * AN.k).toFixed(2));
+  const day = clamp(-p);                                           // den = kolečko nahoře
+  anEl.i7.setAttribute('opacity', 1 - kd); anEl.iN.setAttribute('opacity', kd); anEl.iD.setAttribute('opacity', kd * day);
+  anEl.dark.setAttribute('opacity', (kd * lerp(.45, .55, day)).toFixed(3));
+  // popisky: objeví se, když tam kolečko poprvé dojede; aktivní plně, druhý tlumeně
+  const t1 = t - T_AN.loop0 - T_AN.first, seenDay = t1 > T_AN.hold + T_AN.move * .6;
+  anEl.noc.setAttribute('opacity', t1 > -.2 ? lerp(.35, 1, clamp(p)) : 0);
+  anEl.den.setAttribute('opacity', seenDay ? lerp(.35, 1, day) : 0);
+}
+// dvojice: k 0 = den (kolečko nahoře na předmětu v horní půlce), 1 = noc (dole); dráha stojí, jede jen kolečko, neaktivní půlka ztlumená
+const PAIR_DIM = .55;
+const PAIRS = {};
+for (const id of ['p1', 'p2']) {
+  const el = $(id);
+  // start: káva / pivo (p1) začíná v noci a šipka ho přepne na den, ať kolečko skončí nahoře, kde začíná vinyl / kytara (Ondra 11. 10.)
+  PAIRS[id] = { knob: el.querySelector('.pk'), den: el.querySelector('.pDen'), noc: el.querySelector('.pNoc'), dt: el.querySelector('.dt'), db: el.querySelector('.db'), k: 0, from: 0, to: 0, t0: 0,
+                start: id === 'p1' ? 1 : 0 };
+}
+function pairK(P) { const r = clamp((nowS() - P.t0) / PAIR_MOVE); return lerp(P.from, P.to, ease(r)); }
+function updatePair(P) {
+  const k = pairK(P); P.k = k;
+  P.knob.setAttribute('cy', (540 - PAIR_T / 2 + k * PAIR_T).toFixed(2));
+  P.den.setAttribute('opacity', lerp(1, .35, k).toFixed(3)); P.noc.setAttribute('opacity', lerp(.35, 1, k).toFixed(3));   // popisek podle stavu
+  P.dt.setAttribute('opacity', (k * PAIR_DIM).toFixed(3));
+  P.db.setAttribute('opacity', ((1 - k) * PAIR_DIM).toFixed(3));
+}
+function setPair(P, to, animate) { P.from = animate ? P.k : to; P.to = to; P.t0 = animate ? nowS() : -1e9; updatePair(P); }
+
+function render(t) { const s = state(t); if (/nofin/.test(location.hash)) s.fin = 0; draw(s, t); }   // #nofin = bez prolnutí do 7.png (ladění)
+window.__render = render;
+
+// úsek pro slideshow.html (Ondra 10. 10.): #usek=intro | prepinac | logo – stránka čeká na {cmd:'start'} od rodiče
+// a na konci úseku pošle {done:'next'|'prev'}; bez #usek= se chová jako dřív (SEG je už obsazené časovou osou intra)
+const USEK = (/(?:^#|&)usek=(intro|prepinac|logo)/.exec(location.hash) || [])[1] || null;
+const toParent = m => { if (USEK) parent.postMessage(Object.assign({ usek: USEK }, m), '*'); };
+const fixed = /(?:^#|&)t=([\d.]+)/.exec(location.hash);
+Promise.all([tex(0, 'web/den.webp'), tex(1, 'web/noc.webp'), tex(2, 'web/pismena-a.png'), tex(3, 'web/pismena-b.png'), tex(4, '7.png'), tex(5, '12.png'),
+             document.fonts.load('300 46px "Kit Rounded"').catch(() => {})]).then(() => {   // písmo popisků načíst předem, ať neproblikne náhradní
+  gl.uniform1i(U('day'), 0); gl.uniform1i(U('night'), 1); gl.uniform1i(U('la'), 2); gl.uniform1i(U('lb'), 3); gl.uniform1i(U('fin'), 4); gl.uniform1i(U('p12'), 5);
+  window.__ready = true;
+  if (fixed) { render(+fixed[1]); return; }
+  /* Ovládání jako prezentace:
+     krok 0 = smyčka přepínače den ↔ noc (běží, dokud se nepokračuje)
+     → / PageDown / mezerník / Enter / klik = další krok, ← / PageUp = zpět, Home = znovu od smyčky.
+     Kroky: 1 stereo (dva kanály), 2 spojení do O, 3 nápis a final/7.png, pak anatomie přepínače a dvojice
+     káva/stout a vinyl/kytara (šipka na dvojici nejdřív přepne den → noc, další jde dál; mezi slidy střih)
+     a slide 12: vykreslení celého loga na noční výloze (spustí se samo; → během animace ji dokončí). Tím prezentace končí. */
+  const SLIDES = [...document.querySelectorAll('#slides > *')];
+  let sl = 0, slT = 0;                                   // 0 = intro, 1..n = slide
+  const S12 = SLIDES.length + 1;                         // slide 12 = poslední, kreslí se na plátno
+  let done12 = false, freeze12 = null;   // freeze12: #slide=5&cas12=3.9&stop zastaví čas (ladění)
+  function showSlide(i, back, od) {
+    if (i === S12) { draw(slide12State(0), now()); update12(0); }   // vykreslit dřív, než zmizí předchozí slide (bez probliknutí)
+    const el = SLIDES[i - 1], anat = el && el.id === 'anat';
+    // anatomie začíná přesně jako konec intra (final/7.png); od = navázání z přepínače naležato (koncept/prepinac-nalezato.html) v čase od
+    if (anat) updateAnat(back ? 99 : od || 0);
+    if (el && PAIRS[el.id]) setPair(PAIRS[el.id], back ? 1 - PAIRS[el.id].start : PAIRS[el.id].start, false);   // zpět = přijít do konečné polohy
+    sl = i; slT = anat ? now() - (back ? 99 : od || 0) : now(); done12 = false;
+    SLIDES.forEach((s, k) => s.classList.toggle('on', k === i - 1));
+    L12el.svg.classList.toggle('on', i === S12);
+  }
+  const LOOP_SEG = [['den', 1.6], ['doNoci', 1.8], ['noc', 1.6], ['zpetDen', 1.8]];
+  const LOOP_LEN = LOOP_SEG.reduce((a, x) => a + x[1], 0), LOOP_NOC = 1.6 + 1.8;
+  const STEPS = [null,
+    { tr: [['split', 1.7]], hold: 'stereo' },
+    { tr: [['spojit', 1.5]], hold: 'logo' },
+    { tr: [['finale', 3.8]], hold: 'konec' }];
+  const now = () => performance.now() / 1000;
+  const P = { step: 0, mode: 'loop', t0: now(), segs: null, back: false };
+  let paused = !!USEK; const nazevEl = document.getElementById('nazev');
+  if (USEK && USEK !== 'intro') nazevEl.style.display = 'none';            // nápis patří jen k intru – v úsecích přepínače a loga ani neproblikne
+  function loopState(t) {
+    t = ((t % LOOP_LEN) + LOOP_LEN) % LOOP_LEN;
+    for (const [n, d] of LOOP_SEG) { if (t < d) return segState(n, t / d); t -= d; }
+  }
+  function playState(t) {
+    const total = P.segs.reduce((a, x) => a + x[1], 0);
+    let tt = P.back ? total - t * 1.5 : t;               // zpět o něco rychleji
+    if (tt >= total || tt <= 0) return null;
+    for (const [n, d] of P.segs) { if (tt < d) return typeof n === 'function' ? n(tt / d) : segState(n, tt / d); tt -= d; }
+    return null;
+  }
+  function current() {
+    const t = now() - P.t0;
+    if (P.mode === 'loop') return loopState(t);
+    if (P.mode === 'play') {
+      const s = playState(t);
+      if (s) return s;
+      if (P.back && P.step === 0) { P.mode = 'loop'; P.t0 = now() - LOOP_NOC; return loopState(LOOP_NOC); }
+      P.mode = 'hold';
+    }
+    if (P.step === 0) { P.mode = 'loop'; P.t0 = now() - LOOP_NOC; return loopState(LOOP_NOC); }
+    return segState(STEPS[P.step].hold, 1);
+  }
+  function next() {
+    if (paused) return;                                                     // pozastavený (skrytý) úsek nereaguje
+    if (sl === S12) { if (now() - slT < END12) { slT = now() - END12; done12 = false; } else toParent({ done: 'next' }); return; }   // během vykreslování loga: dokonči ho
+    const P2 = sl > 0 && sl < S12 && PAIRS[SLIDES[sl - 1].id];
+    if (P2 && P2.to === P2.start) { setPair(P2, 1 - P2.start, true); return; }   // dvojice: nejdřív přepnout (p1 noc → den, p2 den → noc)
+    if (USEK === 'prepinac' && sl === SLIDES.length) { toParent({ done: 'next' }); return; }   // za vinylem / kytarou konec úseku
+    if (sl > 0) { showSlide(sl + 1); return; }
+    if (P.mode === 'play' && !P.back) { P.mode = 'hold'; return; }          // během přechodu: dokonči ho
+    if (P.step >= STEPS.length - 1 && P.mode !== 'loop') { if (USEK === 'intro') { toParent({ done: 'next' }); return; } showSlide(1); return; }   // konec intra → první slide
+    let segs = STEPS[P.step + 1].tr.slice();
+    if (P.mode === 'loop') {                                                // ze smyčky: nejdřív plynule do noci
+      const c = current(), w0 = c.wipe, h0 = c.a.hole;
+      segs.unshift([r => { const k = ease(r); return { wipe: lerp(w0, 1, k), split: 0, a: { x: O.cx, hole: lerp(h0, HOLE_DOWN, k) }, b: null }; }, Math.max(.35, 1.2 * (1 - w0))]);
+    }
+    P.step++; P.mode = 'play'; P.back = false; P.segs = segs; P.t0 = now();
+  }
+  function prev() {
+    if (paused) return;
+    if (USEK === 'logo' && sl === S12) { toParent({ done: 'prev' }); return; }
+    const P3 = sl > 0 && sl < S12 && PAIRS[SLIDES[sl - 1].id];
+    if (P3 && P3.to !== P3.start) { setPair(P3, P3.start, true); return; }   // dvojice: zpět do výchozí polohy
+    if (USEK === 'prepinac' && sl === 1) { toParent({ done: 'prev' }); return; }
+    if (sl > 0) { showSlide(sl - 1, true); return; }
+    if (P.mode === 'loop') { toParent({ done: 'prev' }); return; }
+    if (P.mode === 'play') { P.mode = 'hold'; if (P.back) return; }
+    P.segs = STEPS[P.step].tr; P.step--; P.mode = 'play'; P.back = true; P.t0 = now();
+  }
+  function home() { showSlide(0); P.step = 0; P.mode = 'loop'; P.t0 = now(); }
+  // myš i dotyk přes pointer události (na iPhonu klik na plátno nedoběhne k window):
+  // ťuknutí / klik = dál, tah prstem doleva = dál, doprava = zpět
+  let pd = null;
+  addEventListener('pointerdown', e => { if (e.isPrimary) pd = { x: e.clientX, y: e.clientY }; });
+  addEventListener('pointercancel', () => { pd = null; });
+  addEventListener('pointerup', e => {
+    if (!pd || !e.isPrimary) return;
+    const dx = e.clientX - pd.x, dy = e.clientY - pd.y; pd = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { if (dx < 0) next(); else prev(); return; }
+    if (Math.hypot(dx, dy) < 15 && e.button === 0) next();
+  });
+  addEventListener('keydown', e => {
+    if (['ArrowRight', 'PageDown', 'Space', 'Enter'].includes(e.code)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.code)) { e.preventDefault(); prev(); }
+    else if (e.code === 'Home') { if (USEK) toParent({ key: 'Home' }); else home(); }
+    else if (USEK && ['End', 'KeyF', 'KeyH'].includes(e.code)) toParent({ key: e.code });
+  });
+  // ladění: #slide=N rovnou ukáže N-tý slide za intrem
+  { const m = /slide=(\d+)/.exec(location.hash); if (m) showSlide(+m[1]);
+    if (/(?:^#|&)noc(?:&|$)/.test(location.hash) && sl > 0 && PAIRS[SLIDES[sl - 1].id]) setPair(PAIRS[SLIDES[sl - 1].id], 1, false);   // #slide=2&noc = dvojice rovnou v noci
+    const m2 = /cas(?:12)?=([\d.]+)/.exec(location.hash); if (m2) { slT = now() - +m2[1]; if (/stop/.test(location.hash)) freeze12 = +m2[1]; } }   // #slide=N&cas=3.9 = slide N v čase 3,9 s (&stop zastaví čas)
+  function startUsek(back, od) {
+    if (USEK === 'intro') { showSlide(0); P.step = back ? STEPS.length - 1 : 0; P.mode = back ? 'hold' : 'loop'; P.back = false; P.t0 = now(); }
+    else if (USEK === 'prepinac') showSlide(back ? SLIDES.length : 1, back, od);
+    else if (USEK === 'logo') { showSlide(S12); if (back) slT = now() - END12 - 1; }
+  }
+  addEventListener('message', e => {
+    if (!USEK || e.source !== parent) return;
+    const d = e.data || {};
+    if (d.cmd === 'pause') paused = true;
+    else if (d.cmd === 'start') { paused = false; startUsek(!!d.back, d.od); }
+    else if (d.cmd === 'prime' && USEK === 'prepinac') showSlide(1, false, d.od);   // předem nastavit navazující snímek (zůstává pozastavený)
+    else if (d.cmd === 'next') next();
+    else if (d.cmd === 'prev') prev();
+  });
+  window.__usek = () => ({ sl, step: P.step, mode: P.mode, paused });
+  toParent({ ready: true });
+  // když je slide celý vidět, intro se nepřekresluje (šetří grafickou kartu)
+  (function frame() {
+    if (paused) { requestAnimationFrame(frame); return; }                       // úsek čeká / je skrytý – nekreslit
+    nazevEl.classList.toggle('off', !(sl === 0 && P.step === 0 && P.mode === 'loop'));
+    const t = freeze12 !== null && sl > 0 ? freeze12 : now() - slT;
+    if (sl === S12) {
+      const th = t > END12 + .3 ? prenoskaTh(t - END12 - .3) : undefined;                  // po dokreslení přenoska ve smyčce
+      if (t < END12 + .3 || !done12 || freeze12 !== null) { const tt = Math.min(t, END12); draw(slide12State(tt), now()); update12(tt, th); done12 = t >= END12; }
+      else update12(END12, th);                                                            // plátno stojí, hýbe se jen SVG přenosky
+    }   // po dokončení stojí
+    else if (sl > 0 && SLIDES[sl - 1].id === 'anat') updateAnat(t);
+    else if (sl > 0 && PAIRS[SLIDES[sl - 1].id]) updatePair(PAIRS[SLIDES[sl - 1].id]);
+    if (sl === 0 || (sl < S12 && t <= 1)) draw(current(), now());
+    requestAnimationFrame(frame);
+  })();
+});
+</script>
+</body>
+</html>

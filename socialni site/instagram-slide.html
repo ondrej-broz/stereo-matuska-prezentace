@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Instagram slide</title>
+<!-- Slide s mockupem Instagramu (Ondra 11. 10. 2026), 2048 × 1152 jako ostatní slidy (v okně se přizpůsobí šířce).
+     Telefony = iPhone 15 Pro nakreslený v CSS, obrazovky z instagram.js (vložené přímo, ne iframe – ostré při zvětšení),
+     stín = obrázek podklady/stin-telefon.png (instagram-stin.py; CSS stín se v headless Chromu lámal do bloků). Pozadí vanilka #F1E3BE.
+     #profil = samostatný profil, #post-18,post-19,post-20 = posty vedle sebe (celé telefony).
+     ?vyrez = telefony přiblížené a useknuté spodním okrajem (profil pod mřížkou, post pod řádkem s lajky), ?vyrez=N&top=N vlastní ořez a horní okraj.
+     Animace (Ondra 11. 10.): profil = posty naskočí 0 → 3 a klepnutí na Sledovat; posty = telefony vyjedou zdola jeden po druhém,
+     pak na každém dvojklik se srdcem a +1 lajk. Otevřené samostatně se přehraje hned (klik = znovu);
+     ?usek=… = v prezentaci (slideshow.html posílá start / pause / next / prev jako u intro-vyloha.html); ?cas=T = zastavený čas (99 = konec, snímky pro PDF). -->
+<link rel="stylesheet" href="instagram.css">
+<style>
+  html{background:#F1E3BE}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+  body{display:flex;align-items:center;justify-content:center}
+  .slide{width:2048px;height:1152px;overflow:clip;display:flex;justify-content:center;align-items:center;gap:90px;flex:none;zoom:var(--k,1)}
+  .vy .slide{align-items:flex-start;gap:120px}
+  .slot{flex:none;will-change:transform}
+  .phone{--b:13px;position:relative;width:393px;height:852px;padding:var(--b);border-radius:calc(55px + var(--b));background:#0c0c0c;
+         box-shadow:inset 0 0 0 1.5px #6d6a66,inset 0 0 0 4px #2b2a28;zoom:var(--s,1.13)}
+  .stin{position:absolute;left:-220px;top:-220px;width:859px;height:1318px;z-index:-1;pointer-events:none}
+  .screen{width:393px;height:852px;border-radius:55px;overflow:hidden;position:relative;background:#000}
+  .island{position:absolute;top:calc(var(--b) + 11px);left:50%;width:124px;height:36px;margin-left:-62px;border-radius:18px;background:#000;z-index:2}
+  .btn{position:absolute;width:3px;background:#3a3836;border-radius:2px}
+  .btn.l{left:-3px}.btn.r{right:-3px}
+</style>
+</head>
+<body>
+<div class="slide" id="s"></div>
+<script src="instagram.js"></script>
+<script>
+const q = new URLSearchParams(location.search), qn = k => q.get(k) ? +q.get(k) : null;
+const views = (location.hash.slice(1) || 'profil').split(',');
+const USEK = q.get('usek'), CAS = qn('cas');
+const s = document.getElementById('s');
+
+// --- rozložení ---
+const VYREZ = { profil: 592, post: 684 }, B = 13, TOP = qn('top') ?? 60;
+const vyrez = q.has('vyrez'), dol = v => qn('vyrez') ?? VYREZ[v.startsWith('post') ? 'post' : v];
+if (vyrez) document.documentElement.classList.add('vy');
+const sc = vyrez ? (1152 - TOP) / (B + Math.max(...views.map(dol))) : null;
+for (const v of views) s.insertAdjacentHTML('beforeend',
+  `<div class="slot" style="${vyrez ? `margin-top:${1152 - sc * (B + dol(v))}px` : ''}"><div class="phone" style="${vyrez ? `--s:${sc}` : ''}">
+     <img class="stin" src="podklady/stin-telefon.png" alt=""><div class="screen">${IG.obrazovka(v)}</div><div class="island"></div>
+     <div class="btn l" style="top:150px;height:32px"></div><div class="btn l" style="top:215px;height:62px"></div><div class="btn l" style="top:292px;height:62px"></div>
+     <div class="btn r" style="top:240px;height:100px"></div></div></div>`);
+const fit = () => s.style.setProperty('--k', Math.min(innerWidth / 2048, innerHeight / 1152));
+addEventListener('resize', fit); fit();
+
+// --- časová osa (s): profil hraje hned, posty vyjedou zdola po 0,15 s a pak srdíčka po 0,45 s ---
+const VYJEZD = { od: .15, trvani: 1.0, draha: 1250 }, SRDCE = { od: 1.45, krok: .45 };
+const slots = [...s.querySelectorAll('.slot')];
+const osa = views.map((v, i) => {
+  if (!v.startsWith('post')) return { v, vyjezd: null, start: 0 };
+  const k = views.slice(0, i).filter(x => x.startsWith('post')).length;
+  return { v, vyjezd: VYJEZD.od * k, start: SRDCE.od + SRDCE.krok * k };
+});
+const KONEC = Math.max(...osa.map(o => o.start + (o.v.startsWith('post') ? IG.POST.konec : IG.PROFIL.konec)));
+function stav(t) {
+  osa.forEach((o, i) => {
+    const slot = slots[i];
+    if (o.vyjezd !== null) {
+      const e = IG.ease(Math.max(0, Math.min(1, (t - o.vyjezd) / VYJEZD.trvani)));
+      slot.style.transform = e < 1 ? `translateY(${(1 - e) * VYJEZD.draha}px)` : '';
+    }
+    IG.stav(slot.querySelector('.screen'), o.v, t - o.start);
+  });
+}
+
+// --- přehrávání ---
+let raf = 0, t0 = -1e9, paused = !!USEK;
+const now = () => performance.now() / 1000;
+function hraj(odKonce) {
+  cancelAnimationFrame(raf); raf = 0;
+  if (odKonce) { t0 = -1e9; stav(KONEC + 1); return; }
+  t0 = now();
+  const krok = () => { const t = now() - t0; stav(Math.min(t, KONEC + 1)); raf = t <= KONEC + 1 && !paused ? requestAnimationFrame(krok) : 0; };
+  krok();
+}
+const toParent = m => { if (USEK) parent.postMessage(Object.assign({ usek: USEK }, m), '*'); };
+function next() {
+  if (USEK && paused) return;
+  if (now() - t0 < KONEC) { hraj(true); return; }        // během animace: dokonči ji
+  if (USEK) toParent({ done: 'next' }); else hraj(false);
+}
+function prev() { if (USEK && paused) return; if (USEK) toParent({ done: 'prev' }); else hraj(false); }
+
+if (CAS !== null) stav(CAS);
+else if (USEK) {
+  stav(0);
+  addEventListener('message', e => {
+    if (e.source !== parent) return;
+    const d = e.data || {};
+    if (d.cmd === 'pause') { paused = true; cancelAnimationFrame(raf); raf = 0; }
+    else if (d.cmd === 'start') { paused = false; hraj(!!d.back); }
+    else if (d.cmd === 'next') next();
+    else if (d.cmd === 'prev') prev();
+  });
+  // připraveno až po načtení obrázků a písma (ať se při vstupu na slide nic nedonačítá)
+  addEventListener('load', () => document.fonts.ready.then(() => toParent({ ready: true })));
+} else addEventListener('load', () => hraj(false));
+
+// vstup: ťuknutí / klik = dál, tah doleva = dál, doprava = zpět; Home / End / F předá prezentaci
+let pd = null;
+addEventListener('pointerdown', e => { if (e.isPrimary) pd = { x: e.clientX, y: e.clientY }; });
+addEventListener('pointercancel', () => { pd = null; });
+addEventListener('pointerup', e => {
+  if (!pd || !e.isPrimary || CAS !== null) return;
+  const dx = e.clientX - pd.x, dy = e.clientY - pd.y; pd = null;
+  if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { if (dx < 0) next(); else prev(); return; }
+  if (Math.hypot(dx, dy) < 15 && e.button === 0) next();
+});
+addEventListener('keydown', e => {
+  if (CAS !== null) return;
+  if (['ArrowRight', 'ArrowDown', 'PageDown', 'Space', 'Enter'].includes(e.code)) { e.preventDefault(); next(); }
+  else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.code)) { e.preventDefault(); prev(); }
+  else if (USEK && ['Home', 'End', 'KeyF', 'KeyH'].includes(e.code)) toParent({ key: e.code });
+});
+window.__ig = () => ({ paused, bezi: !!raf, konec: KONEC, t: now() - t0 });
+</script>
+</body>
+</html>

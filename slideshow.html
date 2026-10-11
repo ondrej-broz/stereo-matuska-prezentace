@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stereo Matuška slideshow</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  html,body{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  @font-face{font-family:'Kit Rounded';font-weight:300;src:local('Kit Rounded Light'),local('KitRounded-Light'),url('web/KitRounded-Light.otf') format('opentype')}
+  /* rám 16 : 9 uprostřed okna – text se měří k rámu (cqw = 1 % šířky rámu, 1920 px ≙ 100cqw) */
+  #f{position:absolute;left:50%;top:50%;width:min(100vw,calc(100vh * 16 / 9));aspect-ratio:16/9;transform:translate(-50%,-50%);container-type:inline-size;overflow:hidden}
+  #s{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
+  #s[hidden]{display:none}                      /* u zástupného slidu bez fotky */
+  /* outro do rytmu: vrstvy z outro/vrstvy/ (pozadí, oblouk, slovo) */
+  #outro{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #outro[hidden]{display:none}
+  /* neon: zhasnutá verze přes rozsvícenou, krytí řídí skript (Ondra 10. 10.) */
+  #noff{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
+  #noff[hidden]{display:none}
+  /* plakáty den ↔ noc: noční mockup srovnaný na denní plakát přes denní, prolnutí 1,4 s brand easingem (Ondra 11. 10.) */
+  #pnoc{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;opacity:0}
+  #pnoc[hidden]{display:none}
+  /* závěs se zatáhne (slide 15, Ondra 11. 10.): přes slide 15 leží slide 14 – ve skle maskovaný pohyblivou hranou (--x0/--x1),
+     mimo sklo se jen prolíná (opacity); u hrany stín; slide 15 roztažený (fill), ať sedí na slide 14 */
+  #s.fill{object-fit:fill}
+  #z14,#z14v{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block;pointer-events:none}
+  #z14{-webkit-mask-image:url(slideshow/zaves-sklo.png),linear-gradient(to right,transparent var(--x0),#000 var(--x1));-webkit-mask-size:100% 100%;-webkit-mask-composite:source-in;
+       mask-image:url(slideshow/zaves-sklo.png),linear-gradient(to right,transparent var(--x0),#000 var(--x1));mask-size:100% 100%;mask-composite:intersect}
+  #z14v{-webkit-mask-image:url(slideshow/zaves-mimo.png);-webkit-mask-size:100% 100%;mask-image:url(slideshow/zaves-mimo.png);mask-size:100% 100%}
+  #zhr{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to right,transparent calc(var(--x) - 3%),rgba(0,0,0,.45) var(--x),transparent calc(var(--x) + .6%));
+       -webkit-mask-image:url(slideshow/zaves-sklo.png);-webkit-mask-size:100% 100%;mask-image:url(slideshow/zaves-sklo.png);mask-size:100% 100%}
+  #z14[hidden],#z14v[hidden],#zhr[hidden]{display:none}
+  /* animované úseky z intro-vyloha.html: iframe přes celý frame, skrytý přes visibility (WebGL se tak načte předem) */
+  #f iframe.anim{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;visibility:hidden}
+  #f iframe.anim.on{visibility:visible}
+  /* samostatné slidy s texty od copywritera (10. 10. 2026): pozadí = výloha předělu bez nápisu, ztlumená a rozostřená;
+     nahoře malý nadpis (Kit Rounded Light, prostrkaný jako předěly), pod ním odstavec */
+  #s.pozadi{filter:brightness(.5) blur(.35cqw);transform:scale(1.03)}
+  #t{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#fff}
+  #t[hidden]{display:none}
+  #t .in{width:60cqw}
+  #t h2{margin:0 0 2.6cqw;font:300 1.5625cqw/1 'Kit Rounded',sans-serif;letter-spacing:.5em;text-transform:uppercase;color:rgba(255,255,255,.8)}
+  #t p{margin:0;font:300 1.75cqw/1.62 'Kit Rounded',sans-serif;color:rgba(255,255,255,.95)}
+  /* zástupný slide (placeholder): jednobarevné pozadí a věta uprostřed */
+  #ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0 10cqw;text-align:center;font:300 2.19cqw/1.4 'Kit Rounded',sans-serif;color:#EEE1CF}
+  #ph[hidden]{display:none}
+  body.idle{cursor:none}
+  /* ovládání (Ondra 11. 10.): šipky vlevo / vpravo a stavový řádek „12 / 36 · Další: …“ vpravo dole; H skryje / ukáže, ?bez-animaci (snímky do PDF) bez ovládání */
+  .nav{position:absolute;top:50%;z-index:10;width:3.4cqw;height:3.4cqw;margin-top:-1.7cqw;border:0;border-radius:50%;padding:0;cursor:pointer;
+       background:rgba(20,14,11,.32);color:rgba(241,227,190,.9);display:grid;place-items:center;transition:background .2s,opacity .2s}
+  .nav:hover{background:rgba(20,14,11,.6)}
+  .nav svg{width:42%;height:42%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  #navL{left:1.4cqw}#navR{right:1.4cqw}
+  #stav{position:absolute;right:1.4cqw;bottom:1.4cqw;z-index:10;padding:.45cqw 1.2cqw;border-radius:999px;white-space:nowrap;
+        background:rgba(20,14,11,.38);color:rgba(241,227,190,.92);font:300 .95cqw/1.2 'Kit Rounded',sans-serif;letter-spacing:.04em;pointer-events:none}
+  #stav b{font-weight:300;color:#F1E3BE}#stav span{opacity:.65}
+  .nav[hidden],#stav[hidden]{display:none}
+  body.bez-ovladani .nav,body.bez-ovladani #stav{display:none}
+  /* credit na úvodním slidu (Ondra 11. 10.): dole uprostřed malým písmem, prostrkaný Kit Rounded jako nápis STEREO MATUŠKA v intru; stín kvůli světlé denní výloze */
+  #kredit{position:absolute;left:0;right:0;bottom:1.9cqw;z-index:9;text-align:center;pointer-events:none;
+          font:300 .9cqw/1 'Kit Rounded',sans-serif;letter-spacing:.28em;color:rgba(255,255,255,.94);
+          text-shadow:0 0 .55cqw rgba(0,0,0,.45),0 .05cqw .15cqw rgba(0,0,0,.35)}
+  #kredit[hidden]{display:none}
+</style>
+</head>
+<body>
+<div id="f"><img id="s" alt=""><img id="noff" alt="" hidden><img id="pnoc" alt="" hidden><img id="z14v" alt="" hidden><img id="z14" alt="" hidden><div id="zhr" hidden></div><div id="ph" hidden></div><svg id="outro" viewBox="0 0 1920 1080" hidden><rect id="oBg" width="1920" height="1080"/><circle id="oArc"/><image id="oWord" width="1920" height="1080"/></svg><div id="t" hidden><div class="in"><h2></h2><p></p></div></div><button class="nav" id="navL" aria-label="Předchozí slide"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><button class="nav" id="navR" aria-label="Další slide"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button><div id="stav"></div><div id="kredit" hidden>CREATED BY: Ondřej Brož &amp; Tomáš Benda</div></div>
+<script>
+/* Statická prezentace Stereo Matuška (návrh 8. 10. 2026): slidy jdou za sebou bez přechodů.
+   Pořadí = seznam níže (soubory ve složce slideshow/). Vyřazené slidy jsou ve složce vyrazene/.
+   Ovládání: → / mezerník / PageDown / klik / ťuknutí / tah prstem doleva = dál,
+             ← / PageUp / tah prstem doprava = zpět, Home = první, End = poslední, F = celá obrazovka.
+   #5 v adrese otevře rovnou 5. slide.
+   Animované úseky (anim:…) běží v iframe s intro-vyloha.html#usek=…; ?bez-animaci je vypne (snímky do PDF). */
+const SLIDES = [
+  // intro na výloze – animace z intro-vyloha.html (Ondra 10. 10.); statické snímky 01–05 zůstávají pro PDF
+  'anim:intro',
+  // moodboard: úvodní text a moodboard (předěl s nápisem MOODBOARD vyřazen – Ondra 11. 10., vyrazene/slideshow-06_moodboard.webp)
+  'text:uvod', '07_moodboard-spolecny.webp',
+  // koncept (úvod, noční výloha) a přepínač
+  '08_koncept.webp', 'text:prepinac',
+  // přepínač naležato jako light / dark mode webu, jen na paletě, ve smyčce (koncept/prepinac-nalezato.html, Ondra 11. 10.);
+  // šipka ho otočí do svislého přepínače a slide anim:prepinac naváže ve stejném snímku („z ležatého přepínače se stane normální“)
+  'anim:nalezato',
+  'anim:prepinac',
+  // logo: text o přenosce před logem (Ondra 10. 10.), logo bez popisků a stejný slide s popisky prvků (vypínač, přenoska gramofonu)
+  'text:prenoska', 'anim:logo', '15_logo-popisky.webp',
+  // reveal loga v prostoru: výloha zepředu s polepem (10. 10.), dveře, zboku polep a neon, neon se závěsy, detail neonu
+  '16_reveal-vyloha-polep.webp', '17_reveal-dvere-potisk.webp', '18_reveal-zboku-potisk.webp', '19_reveal-zboku-neon.webp', '20_reveal-zboku-neon-zavesy.webp', '21_reveal-neon-detail.webp',
+  // typografie
+  '22_typografie-stereo-display.webp', 'text:font', '23_typografie-z-loga-do-abecedy.webp', '24_typografie-znakova-sada.webp',
+  // barevná paleta: úvod, plakáty ve výloze (den | noc, mockupy)
+  '25_barevna-paleta.webp', 'text:barvy',
+  // plakáty ve výloze den a noc jako dva slidy bez přechodu (Ondra 11. 10.: „odstraň přechod mezi 21 a 22“; dřív jeden slide s prolnutím)
+  '26_eventy-mockup-den.webp', '27_eventy-mockup-noc.webp',
+  // za plakáty (Ondra 9. 10.): WC piktogramy na dveřích (muž = Y + hlava, žena = Y se sukní), podšálek a podtácek vedle sebe (den | noc)
+  '28_ikony-wc-dvere.webp', '29_podtacky-podsalky.webp',
+  // neonový mráček v prostoru (visí ze stropu), za tácky (Ondra 9. 10.)
+  '30_prostor-mracek-neon.webp',
+  // web: Ondrovo hero (web/22.png den, web/21.png noc, 11. 10.) v mockupu notebooku – den s latte a večer se stoutem jako dva slidy
+  // bez přechodu (Ondra 11. 10.: „odstraň přechod mezi slidy“); hero-web/mockup-notebook-zoom-den/noc.png – přiblížené, ať není vidět okno
+  // (dřív zástupný slide placeholder:web z 10. 10.; moje verze hero-web/hero.html nepoužitá; mockupy MacBooku ve vyrazene/slideshow-31_…, 32_…)
+  '31_web-hero-den.webp', '32_web-hero-noc.webp',
+  // Instagram (Ondra 11. 10.): samostatný profil (posty naskočí 0 → 3, klepnutí na Sledovat) a posty 18–20 vedle sebe
+  // (telefony vyjedou zdola, pak srdíčka) – animace v socialni site/instagram-slide.html, konečné stavy 35/36 pro PDF
+  'anim:ig-profil', 'anim:ig-posty',
+  // interiér (bar zboku) vyřazen ze slidů (Ondra 11. 10.: „slide 32 odstraň“) – obrázek slideshow/34_interier-bar-zboku.webp zůstává jako pozadí slidu ALE
+  // cenová nabídka (Ondra 11. 10., podle Prezentace/cenova_nabidka_STEREO_pro_Claude.md): 80 000 Kč, pak náš návrh 60 000 Kč + 20 000 Kč kreditem
+  // na věrnostní kartě STEREO (pass ve Walletu podle karty Automatu Matuška) – nabidka/nabidka.html, snímky nabidka-snimky.py
+  '40_nabidka-80000.webp',
+  '40b_nabidka-ale.webp',                                       // mezi nabídkami: interiér (bar zboku) s tmavým překryvem a ALE přes celý displej (Ondra 11. 10.)
+  '41_nabidka-60000-kredit.webp',
+  // závěr: Ondrovo outro (final/outro/A4 - 3…11.png) do rytmu – frame stojí 0,6 s, smyčka (Ondra 10. 10.); od 11. 10. až za cenovou nabídkou; 8 framů pro PDF
+  'outro',
+  // úplný závěr (Ondra 11. 10.): „Ve stereu zní spolupráce nejlíp. Těšíme se!“ – zaver/zaver.html, snímek zaver-snimek.py; statický
+  // (sloučení s outrem – slogan místo slov – Ondra zkusil a vrátil: „necháme ten poslední slide statický“)
+  '50_zaver.webp'
+];
+/* Texty od copywritera (10. 10. 2026) jako samostatné slidy 'text:…' hned za předělem (Ondra: na předěly se nehodí).
+   pozadi = výloha předělu bez nápisu (cesta od final/), ve slidu ztlumená a rozostřená. */
+const NOC = '15.png', DEN = 'typografie/pozadi-den-ztmavene.png';
+const TEXTY = {
+  uvod: { nadpis: 'Úvod', pozadi: DEN, text: 'Identitu stavíme na autentické estetice 80. let, atmosféře tradičních irských pubů a dvojím rytmu podniku. Inspiraci jsme hledali v dobovém průmyslovém designu, typografii a audiotechnice, nikoli v prvoplánových retro symbolech. Zásadní roli hraje i samotná Lucerna – její charakter vždy utvářelo spojení elegance, kulturního života a nekonvenčnosti. STEREO na tyto hodnoty navazuje: je prémiové, ale neokázalé a nostalgické, ale ne staromódní.' },
+  prepinac: { nadpis: 'Přepínač', pozadi: NOC, text: 'Písmeno O jsme proměnili v symbolický přepínač dvou režimů podniku. Jeho princip odkazuje na dobové ovládací prvky audiotechniky i samotný gramofon Tesla MC 600 Q, který umožňoval přepínání mezi 33 a 45 otáčkami za minutu. Dva světelné okruhy, z nichž je vždy aktivní pouze jeden, symbolizují dvě tváře Sterea – poklidný denní poslech vinylů u kávy a energický večerní provoz s pivem a živou hudbou. Typografický detail se stává funkčním symbolem celé značky.' },
+  prenoska: { nadpis: 'Přenoska', pozadi: NOC, text: 'Stylizované raménko gramofonu s přenoskou elegantně uzavírá logotyp fascinovaný gramofony jejich mechanismem. Jeho poloha zároveň hravě komunikuje aktuální režim podniku, získává vlastní význam a stává se součástí promyšleného vizuálního systému.' },
+  font: { nadpis: 'Font', pozadi: NOC, text: 'Základem logotypu je autorské písmo inspirované dobovou typografií propagačních materiálů gramofonu Tesla MC 600 Q – vlajkové lodi gramofonů Tesla 80. let. Charakteristické oblé tvary, výrazná geometrie a osobitý rytmus písma odkazují na estetiku tehdejšího průmyslového designu. Historickou předlohu jsme reinterpretovali do současné, svébytné podoby, která si zachovává nezaměnitelný charakter. Nevytváříme tak retro stylizaci, ale vizuální identitu s autentickými kořeny v dobovém průmyslovém designu.' },
+  barvy: { nadpis: 'Barvy', pozadi: NOC, text: 'Barevně propojujeme dva zdánlivě vzdálené světy – atmosféru tradičních irských pubů a vizuální kulturu 80. let. Večerní paleta vychází z barev irské trikolóry, které jsme posunuli do tlumených, zemitých vintage odstínů terakoty, meruňkové a šalvějové. Denní komunikace naopak pracuje s hřejivými tóny hnědé, bronzu a krémové, evokujícími patinu starého papíru, typické kartony, obaly gramodesek, dřevěný nábytek i zažloutlé stránky knih. Dvě odlišné barevné nálady vytvářejí jeden soudržný vizuální svět, který přirozeně mění atmosféru spolu s rytmem podniku.' }
+};
+// česká sazba: jednopísmenné předložky a spojky a číslo s jednotkou nezůstanou na konci řádku, pomlčka nezačne řádek
+const sazba = t => t.replace(/(^|[\s(])([vkszaiouVKSZAIOU])\s/g, '$1$2 ').replace(/(^|[\s(])([vkszaiouVKSZAIOU])\s/g, '$1$2 ')
+  .replace(/(\d)\s(?=\S)/g, '$1 ').replace(/\s–/g, ' –');
+const tsl = document.getElementById('t'), tH = tsl.querySelector('h2'), tP = tsl.querySelector('p');
+const textSlidu = n => n.startsWith('text:') ? TEXTY[n.slice(5)] : null;
+// zástupné slidy 'placeholder:…' – lahvově zelená #2F4537 (logo_1.svg), krémový text #EEE1CF
+const PLACEHOLDERY = { web: { barva: '#2F4537', text: 'Tady budou textace hero sekce webu.' } };
+const placeholder = n => n.startsWith('placeholder:') ? PLACEHOLDERY[n.slice(12)] : null;
+const frame = document.getElementById('f'), phd = document.getElementById('ph');
+// animované úseky z intro-vyloha.html (Ondra 10. 10.): intro, přepínač, logo – každý ve vlastním iframe, načtený předem a pozastavený;
+// při vstupu dostane {cmd:'start', back}, na konci úseku pošle {done:'next'|'prev'}, klávesy Home / End / F přepošle sem
+const animSlidu = n => n.startsWith('anim:') ? n.slice(5) : null;
+const ANIM = {}, ANIM_READY = new Set();
+// úseky mimo intro-vyloha.html (stejný protokol start / pause / next / prev, ready / done / key)
+const ANIM_SRC = { 'nalezato': 'koncept/prepinac-nalezato.html?usek=nalezato',
+                   'ig-profil': 'socialni%20site/instagram-slide.html?usek=ig-profil&vyrez#profil',
+                   'ig-posty': 'socialni%20site/instagram-slide.html?usek=ig-posty#post-18,post-19,post-20' };
+if (!/bez-animaci/.test(location.search)) for (const u of new Set(SLIDES.map(animSlidu).filter(Boolean))) {
+  const f = document.createElement('iframe');
+  f.className = 'anim'; f.title = u; f.src = ANIM_SRC[u] || 'intro-vyloha.html#usek=' + u;
+  frame.appendChild(f); ANIM[u] = f;
+}
+let animBack = false, animOd = 0;                  // animOd: čas, od kterého má úsek začít (navázání přepínače naležato na anatomii)
+function animStart(u) { if (!ANIM_READY.has(u)) return; ANIM[u].contentWindow.postMessage({ cmd: 'start', back: animBack, od: animOd }, '*'); animOd = 0; ANIM[u].focus(); }
+addEventListener('message', e => {
+  const u = Object.keys(ANIM).find(k => ANIM[k].contentWindow === e.source); if (!u) return;
+  const d = e.data || {};
+  if (d.ready) { ANIM_READY.add(u); if (animSlidu(SLIDES[cur]) === u) animStart(u); return; }
+  if (animSlidu(SLIDES[cur]) !== u) return;
+  if (d.prime !== undefined) { const n = ANIM[animSlidu(SLIDES[cur + 1] || '')]; if (n) n.contentWindow.postMessage({ cmd: 'prime', od: d.prime }, '*'); return; }
+  if (d.done === 'next') { animOd = d.navaz || 0; show(cur + 1); }
+  else if (d.done === 'prev') { if (cur > 0) show(cur - 1); }
+  else if (d.key === 'Home') show(0);
+  else if (d.key === 'End') show(SLIDES.length - 1);
+  else if (d.key === 'KeyF') celaObrazovka();
+  else if (d.key === 'KeyH') skrytOvladani();
+});
+// dvojice den ↔ noc (jeden slide, šipka prolne den → noc) – použije pre i prolnutí níže. Od 11. 10. prázdné: plakáty i hero webu
+// jsou na Ondrovo přání dva slidy bez přechodu. Vrácení plakátů: položka 'plakaty' v SLIDES a sem
+// plakaty: { den: 'slideshow/26_eventy-mockup-den.webp', noc: 'slideshow/27_eventy-mockup-noc-zarovnany.webp' } (noc srovnaná na denní plakát, eventy/mockupy/zarovnani-noc.py)
+const DVOJICE = {};
+const img = document.getElementById('s');
+// vše předem načíst, ať je střih okamžitý; když se obrázek nenačte (výpadek sítě), zkusí se znovu
+const pre = SLIDES.map((n, k) => {
+  const i = new Image(); let tries = 0;
+  if (placeholder(n) || animSlidu(n) || n === 'outro') return i;   // bez obrázku
+  const url = textSlidu(n) ? textSlidu(n).pozadi : DVOJICE[n] ? DVOJICE[n].den : 'slideshow/' + n;
+  i.onerror = () => { if (++tries <= 5) setTimeout(() => { i.src = url + '?r=' + tries; }, 400 * tries); };
+  i.onload = () => { if (k === cur) img.src = i.src; };
+  i.src = url; return i;
+});
+let cur = 0;
+function show(i) {
+  const was = cur;
+  cur = Math.max(0, Math.min(SLIDES.length - 1, i));
+  animBack = cur === was - 1;                    // konečný stav animace jen při kroku o jeden slide zpět; skok (Home, #N) = od začátku
+  const a = animSlidu(SLIDES[cur]);
+  for (const u in ANIM) { const on = u === a; ANIM[u].classList.toggle('on', on); if (!on) ANIM[u].contentWindow.postMessage({ cmd: 'pause' }, '*'); }
+  if (a) animStart(a); else if (document.activeElement && document.activeElement.tagName === 'IFRAME') document.activeElement.blur();
+  const ph = placeholder(SLIDES[cur]);
+  img.hidden = !!(ph || a || SLIDES[cur] === 'outro'); if (!img.hidden) img.src = pre[cur].src;
+  if (SLIDES[cur] === 'outro') outroStart(); else outroStop();
+  const dv = DVOJICE[SLIDES[cur]]; pnoc.hidden = !dv; if (dv) pnoc.src = dv.noc;
+  dvojiceNoc(animBack && !!dv, true);                                                              // mimo dvojice se rozběhnuté prolnutí zastaví
+  if (!pnoc.hidden && OUTRO_CAS !== undefined) pnoc.style.opacity = ease(Math.min(1, OUTRO_CAS / 1.4)).toFixed(3);   // ladění &cas=
+  neonStart(SLIDES[cur]);
+  img.classList.toggle('fill', SLIDES[cur] === ZAVES); zavStart(SLIDES[cur]);
+  frame.style.background = ph ? ph.barva : '';
+  phd.hidden = !ph; phd.textContent = ph ? ph.text : '';
+  const tx = textSlidu(SLIDES[cur]);
+  img.classList.toggle('pozadi', !!tx);
+  tsl.hidden = !tx; tH.textContent = tx ? tx.nadpis : ''; tP.textContent = tx ? sazba(tx.text) : '';
+  history.replaceState(null, '', '#' + (cur + 1));
+  ovladani();
+}
+// neon se rozsvítí (Ondra 10. 10.): přes rozsvícený obrázek se položí zhasnutý (slideshow/neon-off/<jméno>) a jeho krytí jede podle vzorce
+// [čas s, svit 0–1] – skoky jako u startéru zářivky, mezi body přechod 40 ms; každý slide jinak; vstup zpět = rovnou rozsvíceno
+// (Ondra 11. 10.: neon se závěsy a mráček bez animace – rovnou rozsvícené)
+const NEON = {
+  '19_reveal-zboku-neon.webp': [[0, 0], [.35, 1], [.42, 0], [.6, .7], [.66, 0], [.95, 1], [1.02, .35], [1.12, 1], [1.3, 1]],
+  '21_reveal-neon-detail.webp': [[0, 0], [.4, 1], [.47, .1], [.58, 1], [.66, 0], [1.0, 1], [1.3, 1]],
+};
+const noff = document.getElementById('noff'); let neonRaf = 0, neonT0 = 0, neonVz = null;
+for (const n in NEON) { const i = new Image(); i.src = 'slideshow/neon-off/' + n; }          // předem načíst
+function svit(vz, t) {
+  for (let k = 1; k < vz.length; k++) if (t < vz[k][0]) {
+    const [, v0] = vz[k - 1], [t1, v1] = vz[k], r = Math.max(0, (t - (t1 - .04)) / .04);      // drží hodnotu, 40 ms před dalším bodem přejde
+    return t < t1 - .04 ? v0 : v0 + (v1 - v0) * r;
+  }
+  return 1;
+}
+function neonKonec() { cancelAnimationFrame(neonRaf); neonVz = null; noff.hidden = true; img.style.visibility = ''; }
+const neonBezi = () => neonVz !== null;
+function neonFrame() {
+  const t = (performance.now() - neonT0) / 1000;
+  if (!neonVz || t >= neonVz[neonVz.length - 1][0]) return neonKonec();
+  noff.style.opacity = (1 - svit(neonVz, t)).toFixed(3); neonRaf = requestAnimationFrame(neonFrame);
+}
+function neonStart(n) {
+  neonKonec(); if (!NEON[n] || animBack) return;
+  const vz = neonVz = NEON[n]; noff.src = 'slideshow/neon-off/' + n; noff.style.opacity = 1; noff.hidden = false;
+  // zhasnutý obrázek ještě není připravený (studený start) → rozsvícený podklad schovat, ať neon neproblikne, a blikat až po načtení
+  if (!noff.complete) img.style.visibility = 'hidden';
+  noff.decode().catch(() => {}).then(() => {
+    if (neonVz !== vz) return;                                  // mezitím se odešlo
+    img.style.visibility = ''; neonT0 = performance.now(); neonRaf = requestAnimationFrame(neonFrame);
+  });
+}
+// outro do rytmu (Ondra 10. 10.): 8 framů z final/outro/A4 - N.png rozložených na vrstvy (outro/vrstvy/outro.json, vrstvy.py);
+// rychlé střídání framů po 0,6 s ve smyčce, dokud se nepřepne (Ondra 11. 10.: bez výjezdu oblouku)
+function bez(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  return t => { let x = t; for (let i = 0; i < 8; i++) { const f = ((ax * x + bx) * x + cx) * x - t, d = (3 * ax * x + 2 * bx) * x + cx; if (Math.abs(d) < 1e-6) break; x -= f / d; } return ((ay * x + by) * x + cy) * x; };
+}
+const ease = bez(.65, 0, .35, 1), STOJI = .6;
+const outroEl = document.getElementById('outro'), oBg = document.getElementById('oBg'), oArc = document.getElementById('oArc'), oWord = document.getElementById('oWord');
+let FRAMY = [], outroRaf = 0, outroT0 = 0, outroK = -1;
+const OUTRO_CAS = (/(?:^#|&)cas=([\d.]+)/.exec(location.hash) || [])[1];   // ladění: #N&cas=0.95 zastaví čas outra / prolnutí plakátů den → noc (snímky, kontrola)
+fetch('outro/vrstvy/outro.json').then(r => r.json()).then(f => { FRAMY = f; f.forEach(x => { const i = new Image(); i.src = x.slovo; }); if (SLIDES[cur] === 'outro') outroStart(); });
+function outroFrame() {
+  if (!FRAMY.length) return;
+  const t = OUTRO_CAS !== undefined ? +OUTRO_CAS : (performance.now() - outroT0) / 1000, k = Math.floor(t / STOJI) % FRAMY.length, fr = FRAMY[k], o = fr.oblouk;
+  if (k !== outroK) { outroK = k; oBg.setAttribute('fill', fr.pozadi); oArc.setAttribute('fill', o.barva); oArc.setAttribute('cx', o.cx); oArc.setAttribute('cy', o.cy); oArc.setAttribute('r', o.r); oWord.setAttribute('href', fr.slovo); }
+  outroRaf = requestAnimationFrame(outroFrame);
+}
+// SVG nemá vlastnost .hidden (na rozdíl od HTML) – přepíná se přímo atribut
+function outroStop() { cancelAnimationFrame(outroRaf); outroEl.toggleAttribute('hidden', true); }
+function outroStart() { outroStop(); if (!FRAMY.length) return; outroEl.toggleAttribute('hidden', false); outroK = -1; outroT0 = performance.now(); outroFrame(); }
+// dvojice den ↔ noc (plakáty – Ondra 11. 10.: čisté prolnutí; hero webu): denní obrázek, přes něj noční;
+// šipka prolne den → noc za 1,4 s (brand easing), další jde dál; zpět prolne noc → den; vstup zpět z dalšího slidu = rovnou noc
+const pnoc = document.getElementById('pnoc');
+const dvojicePre = Object.values(DVOJICE).map(d => { const i = new Image(); i.src = d.noc; return i; });   // noční obrázky načíst předem
+let dvojiceNa = false, dvojRaf = 0;                                                              // true = noc
+function dvojiceNoc(na, ihned) {
+  dvojiceNa = na; cancelAnimationFrame(dvojRaf);
+  if (ihned) { pnoc.style.opacity = na ? 1 : 0; return; }
+  const od = +pnoc.style.opacity || 0, kam = na ? 1 : 0, t0 = performance.now();               // z aktuálního krytí (i uprostřed přechodu)
+  const krok = () => {
+    const r = Math.min(1, (performance.now() - t0) / 1400);
+    pnoc.style.opacity = (od + (kam - od) * ease(r)).toFixed(3);
+    if (r < 1) dvojRaf = requestAnimationFrame(krok);
+  };
+  krok();
+}
+// závěs se zatáhne (Ondra 11. 10.): slide 15 začne jako slide 14 (otevřená výloha) a za sklem se zleva doprava zatáhne černý závěs;
+// hrana jede po kolejnici v perspektivě výlohy – x(u) = (5031,28 u + 20) / (1,93679 u + 1) z homografie ve vhled-zboku-zavesy.py
+// (svislice zůstávají svislé), sklo od u 0,0165 (x 100) do 0,888 (x 1650); 2,5 s brand easingem po 0,3 s; vstup zpět = zataženo
+const ZAVES = '20_reveal-zboku-neon-zavesy.webp', ZAV_U0 = .0165, ZAV_U1 = .888, ZAV_DOBA = 2.5, ZAV_ZPOZDENI = .3;
+const z14 = document.getElementById('z14'), z14v = document.getElementById('z14v'), zhr = document.getElementById('zhr');
+z14.src = z14v.src = 'slideshow/19_reveal-zboku-neon.webp';                                   // načíst předem
+let zavRaf = 0, zavT0 = 0, zavBezi = false;
+function zavStav(p) {                                                                           // p: 0 = otevřeno, 1 = zataženo
+  const u = ZAV_U0 + (ZAV_U1 - ZAV_U0) * ease(p), x = (5031.279 * u + 20) / (1.93679 * u + 1) / 2048 * 100;
+  frame.style.setProperty('--x', x.toFixed(3) + '%'); frame.style.setProperty('--x0', (x - .8).toFixed(3) + '%'); frame.style.setProperty('--x1', (x + .8).toFixed(3) + '%');
+  z14v.style.opacity = (1 - p).toFixed(3); zhr.style.opacity = p > 0 && p < 1 ? 1 : 0;
+}
+function zavKonec() { cancelAnimationFrame(zavRaf); zavBezi = false; z14.hidden = z14v.hidden = zhr.hidden = true; }
+function zavStart(n) {
+  zavKonec(); if (n !== ZAVES || animBack) return;
+  z14.hidden = z14v.hidden = zhr.hidden = false; zavStav(0); zavBezi = true;
+  if (OUTRO_CAS !== undefined) { zavStav(Math.min(1, Math.max(0, (OUTRO_CAS - ZAV_ZPOZDENI) / ZAV_DOBA))); return; }   // ladění &cas=
+  zavT0 = performance.now();
+  const krok = () => {
+    const p = ((performance.now() - zavT0) / 1000 - ZAV_ZPOZDENI) / ZAV_DOBA;
+    if (p >= 1) return zavKonec();                                                              // zataženo = čistý slide 15
+    zavStav(Math.max(0, p)); zavRaf = requestAnimationFrame(krok);
+  };
+  zavRaf = requestAnimationFrame(krok);
+}
+// ovládání (Ondra 11. 10.): názvy slidů pro stavový řádek „12 / 36 · Další: …“ – při změně SLIDES doplnit
+const NAZVY = {
+  'anim:intro': 'Intro', '07_moodboard-spolecny.webp': 'Moodboard', '08_koncept.webp': 'Koncept', 'anim:nalezato': 'Přepínač naležato',
+  'anim:prepinac': 'Přepínač', 'anim:logo': 'Logo', '15_logo-popisky.webp': 'Logo s popisky', '16_reveal-vyloha-polep.webp': 'Výloha s polepem',
+  '17_reveal-dvere-potisk.webp': 'Dveře', '18_reveal-zboku-potisk.webp': 'Výloha zboku', '19_reveal-zboku-neon.webp': 'Neon zboku',
+  '20_reveal-zboku-neon-zavesy.webp': 'Neon se závěsem', '21_reveal-neon-detail.webp': 'Detail neonu', '22_typografie-stereo-display.webp': 'Typografie',
+  '23_typografie-z-loga-do-abecedy.webp': 'Z loga do abecedy', '24_typografie-znakova-sada.webp': 'Znaková sada', '25_barevna-paleta.webp': 'Barevná paleta',
+  '26_eventy-mockup-den.webp': 'Plakáty – den', '27_eventy-mockup-noc.webp': 'Plakáty – noc', '28_ikony-wc-dvere.webp': 'Piktogramy WC',
+  '29_podtacky-podsalky.webp': 'Podšálek a podtácek', '30_prostor-mracek-neon.webp': 'Neonový mráček', '31_web-hero-den.webp': 'Web – den',
+  '32_web-hero-noc.webp': 'Web – noc', 'anim:ig-profil': 'Instagram – profil', 'anim:ig-posty': 'Instagram – posty', '34_interier-bar-zboku.webp': 'Interiér',
+  'outro': 'Outro', '40_nabidka-80000.webp': 'Cenová nabídka', '40b_nabidka-ale.webp': 'Ale…', '41_nabidka-60000-kredit.webp': 'Náš návrh', '50_zaver.webp': 'Závěr'
+};
+const nazev = n => NAZVY[n] || (textSlidu(n) ? textSlidu(n).nadpis + ' (text)' : placeholder(n) ? 'Web' : n.replace(/\.webp$/, ''));
+const navL = document.getElementById('navL'), navR = document.getElementById('navR'), stavEl = document.getElementById('stav');
+if (/bez-animaci/.test(location.search)) document.body.classList.add('bez-ovladani');      // snímky do PDF bez ovládání
+function ovladani() {
+  navL.hidden = cur === 0; navR.hidden = cur === SLIDES.length - 1;
+  document.getElementById('kredit').hidden = cur !== 0;                                       // credit jen na úvodním slidu
+  stavEl.innerHTML = `<b>${cur + 1} / ${SLIDES.length}</b> <span>·</span> ` +
+    (cur < SLIDES.length - 1 ? `<span>Další:</span> ${nazev(SLIDES[cur + 1])}` : '<span>Konec prezentace</span>');
+}
+const skrytOvladani = () => document.body.classList.toggle('bez-ovladani');
+// šipky: klik nesmí probublat k ťuknutí na slide (to by šlo dál)
+for (const [b, f] of [[navL, () => prev()], [navR, () => next()]]) {
+  b.addEventListener('pointerdown', e => e.stopPropagation());
+  b.addEventListener('pointerup', e => { e.stopPropagation(); if (e.button === 0) f(); });
+}
+
+// vstup uživatele: během animace se krok předá do iframe (klik do černého pruhu nesmí přeskočit celý úsek)
+const animTady = () => { const a = animSlidu(SLIDES[cur]); return a && ANIM_READY.has(a) ? ANIM[a] : null; };
+const next = () => { if (neonBezi()) return neonKonec(); if (zavBezi) return zavKonec(); if (DVOJICE[SLIDES[cur]] && !dvojiceNa) return dvojiceNoc(true); const f = animTady(); if (f) f.contentWindow.postMessage({ cmd: 'next' }, '*'); else show(cur + 1); };
+const prev = () => { if (DVOJICE[SLIDES[cur]] && dvojiceNa) return dvojiceNoc(false); const f = animTady(); if (f) f.contentWindow.postMessage({ cmd: 'prev' }, '*'); else if (cur > 0) show(cur - 1); };
+const celaObrazovka = () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen?.().catch(() => {}); };
+addEventListener('keydown', e => {
+  if (['ArrowRight', 'ArrowDown', 'PageDown', 'Space', 'Enter'].includes(e.code)) { e.preventDefault(); next(); }
+  else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.code)) { e.preventDefault(); prev(); }
+  else if (e.code === 'Home') show(0);
+  else if (e.code === 'End') show(SLIDES.length - 1);
+  else if (e.code === 'KeyF') celaObrazovka();
+  else if (e.code === 'KeyH') skrytOvladani();
+});
+// myš i dotyk: ťuknutí = dál, tah doleva = dál, doprava = zpět
+let pd = null;
+addEventListener('pointerdown', e => { if (e.isPrimary) pd = { x: e.clientX, y: e.clientY }; });
+addEventListener('pointercancel', () => { pd = null; });
+addEventListener('pointerup', e => {
+  if (!pd || !e.isPrimary) return;
+  const dx = e.clientX - pd.x, dy = e.clientY - pd.y; pd = null;
+  if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { if (dx < 0) next(); else prev(); return; }
+  if (Math.hypot(dx, dy) < 15 && e.button === 0) next();
+});
+// kurzor zmizí po 2 s bez pohybu
+let idleT;
+addEventListener('pointermove', () => { document.body.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(() => document.body.classList.add('idle'), 2000); });
+const m = /^#(\d+)/.exec(location.hash);
+show(m ? +m[1] - 1 : 0);
+</script>
+</body>
+</html>

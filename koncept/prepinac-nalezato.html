@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Přepínač naležato</title>
+<!-- Úvod ke konceptu (Ondra 11. 10. 2026): přepínač „naležato“ jako přepnutí light / dark mode na webu, jen na barevné paletě, animovaně.
+     O z loga položené (plná pilulka s kruhovým otvorem jako v Ondrově hero web/21–22.png), bez popisků (kolečka palety pod ním Ondra zrušil).
+     Den: pozadí vanilka #F1E3BE, pilulka bronzová #BA8A5D, otvor vlevo; noc: tmavá zelená #213227, terakota #C8553D, otvor vpravo.
+     Smyčka 5 s: den stojí 1,6 s, přejezd 0,9 s (brand easing), noc stojí 1,6 s, přejezd zpět 0,9 s.
+     Šipka (Ondra: „musí navazovat na slide 7 – z ležatého přepínače se stane normální“): pilulka se za 1,6 s otočí do svislé polohy, zvětší na
+     dráhu anatomie přepínače, výplň se změní v bílou linku, otvor dojede doprostřed jako kolečko a paleta se prolne do přiblížené noční výlohy –
+     poslední snímek = anatomie (intro-vyloha.html#usek=prepinac) v čase 1,7 s; pak {done:'next', navaz:1.7} a slide 7 začne právě tam.
+     Geometrie je svislá jako v anatomii (střed 960 / 540, dráha R 242,18, rovná půlka 261,92, kolečko r 150,68), naležato = otočení −90° a zmenšení 1 / 1,72217.
+     ?usek=… = v prezentaci (protokol jako intro-vyloha.html + navaz / prime); ?cas=T = zastavená smyčka, ?morf=K = zastavené otočení (snímky, test). -->
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;touch-action:none;-webkit-user-select:none;user-select:none}
+  svg{display:block;width:100%;height:100%}
+</style>
+</head>
+<body>
+<svg id="s" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet">
+  <rect id="bg" width="1920" height="1080"/>
+  <!-- noční výloha přiblížená stejně jako anatomie v intro-vyloha.html (AN z 2,32, střed 1501,5 / 539,8; ztmavení #0d0907 0,45) -->
+  <g id="foto" opacity="0">
+    <image href="../web/noc.webp" width="1920" height="1080" transform="translate(-2523.48 -712.34) scale(2.3200)"/>
+    <rect width="1920" height="1080" fill="#0d0907" opacity=".45"/>
+  </g>
+  <g id="pr">
+    <path id="vypln" fill-rule="evenodd"/>
+    <!-- linka 6,46 jednotky slidu jako v anatomii: v souřadnicích pilulky 6,46 / měřítko (vector-effect by ji držel v pixelech okna – v menším okně tlustší) -->
+    <g id="linka" fill="none" stroke="#fff" stroke-width="6.46" stroke-linecap="round" opacity="0">
+      <path id="draha"/>
+      <circle id="knob" cx="0" r="150.68"/>
+    </g>
+  </g>
+</svg>
+<script>
+function bez(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  return t => { let x = t; for (let i = 0; i < 8; i++) { const f = ((ax * x + bx) * x + cx) * x - t, d = (3 * ax * x + 2 * bx) * x + cx; if (Math.abs(d) < 1e-6) break; x -= f / d; } return ((ay * x + by) * x + cy) * x; };
+}
+const ease = bez(.65, 0, .35, 1), clamp = x => Math.max(0, Math.min(1, x)), lerp = (a, b, k) => a + (b - a) * k;
+// geometrie v souřadnicích pilulky (svisle, střed 0 / 0) = anatomie přepínače; naležato zmenšené o S a otočené o −90° (horní konec = vlevo = den)
+const R = 242.18, L = 261.92, RK = 150.68, S = 2 * R / 281.25;          // S = 1,72217 → naležato 585,4 × 281,25
+const CY0 = 487.5, CY1 = 540, CX = 960;                                    // střed naležato / svisle (obrazovka 1920 × 1080)
+const f2 = v => v.toFixed(2);
+const pill = `M${f2(-R)},${f2(-L)}A${f2(R)},${f2(R)} 0 0 1 ${f2(R)},${f2(-L)}L${f2(R)},${f2(L)}A${f2(R)},${f2(R)} 0 0 1 ${f2(-R)},${f2(L)}Z`;
+const dira = cy => `M${f2(-RK)},${f2(cy)}a${f2(RK)},${f2(RK)} 0 1 0 ${f2(2 * RK)},0a${f2(RK)},${f2(RK)} 0 1 0 ${f2(-2 * RK)},0Z`;
+const BARVY = { bg: ['#F1E3BE', '#213227'], pil: ['#BA8A5D', '#C8553D'] };
+const LINKA = 6.46;                                                        // tloušťka linky v jednotkách slidu (anatomie: 7,6 × 0,85)
+const $ = id => document.getElementById(id), svgEl = $('s');
+$('draha').setAttribute('d', pill);
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mix = ([a, b], p) => '#' + hex(a).map((v, i) => Math.round(v + (hex(b)[i] - v) * p).toString(16).padStart(2, '0')).join('').toUpperCase();
+const n4 = v => String(+v.toFixed(4));
+// p = den 0 / noc 1 (barvy, poloha otvoru), m = postup otočení 0–1 (ležatě → svisle), v = výplň → linka 0–1, fo = fotka 0–1, kd = otvor doprostřed 0–1
+function stav(p, m = 0, v = 0, fo = 0, kd = 0) {
+  const bg = mix(BARVY.bg, p), rot = -90 * (1 - m), sc = lerp(1 / S, 1, m), cy = lerp(CY0, CY1, m);
+  const ky = lerp(lerp(-L, L, p), 0, kd);                                  // otvor: den nahoře (= vlevo), noc dole; při otočení doprostřed
+  $('bg').setAttribute('fill', bg); document.body.style.background = bg;
+  $('pr').setAttribute('transform', `translate(${CX} ${f2(cy)}) rotate(${f2(rot)}) scale(${sc.toFixed(5)})`);
+  $('vypln').setAttribute('d', pill + dira(ky)); $('vypln').setAttribute('fill', mix(BARVY.pil, p)); $('vypln').setAttribute('opacity', n4(1 - v));
+  $('knob').setAttribute('cy', f2(ky)); $('linka').setAttribute('opacity', n4(v)); $('linka').setAttribute('stroke-width', (LINKA / sc).toFixed(4));
+  $('foto').setAttribute('opacity', n4(fo));
+  // údaje pro test: rozměry pilulky na obrazovce, otvor, krytí vrstev
+  const ds = svgEl.dataset, w = 2 * R * sc, h = 2 * (L + R) * sc, rr = rot * Math.PI / 180;
+  Object.assign(ds, { p: n4(p), pozadi: bg, rot: n4(rot), cy: n4(cy), foto: n4(fo), vypln: n4(1 - v), linka: n4(v),
+    sirka: n4(Math.abs(Math.cos(rr)) * w + Math.abs(Math.sin(rr)) * h), vyska: n4(Math.abs(Math.sin(rr)) * w + Math.abs(Math.cos(rr)) * h),
+    kolecko: n4(RK * sc), kolcy: n4(cy + Math.cos(rr) * ky * sc), dira: n4(CX - Math.sin(rr) * ky * sc) });
+}
+// smyčka (s): den 0–1,6, přejezd 1,6–2,5, noc 2,5–4,1, přejezd zpět 4,1–5,0
+const SMYCKA = 5, STOJI = 1.6, JEDE = .9;
+function pVCase(t) {
+  t = ((t % SMYCKA) + SMYCKA) % SMYCKA;
+  if (t < STOJI) return 0;
+  if (t < STOJI + JEDE) return ease((t - STOJI) / JEDE);
+  if (t < 2 * STOJI + JEDE) return 1;
+  return 1 - ease((t - 2 * STOJI - JEDE) / JEDE);
+}
+// otočení (s od šipky): otočení + zvětšení + posun + otvor doprostřed 0–1,2; výplň → linka 0,5–1,1; fotka 0,6–1,5
+const MORF = 1.6, NAVAZ = 1.7;                                             // NAVAZ = čas anatomie (T_AN.draw[1]), kde slide 7 pokračuje
+function morf(k, p0) {
+  const a = ease(clamp(k / 1.2));
+  stav(p0, a, ease(clamp((k - .5) / .6)), ease(clamp((k - .6) / .9)), a);
+}
+const q = new URLSearchParams(location.search), USEK = q.get('usek');
+const CAS = q.get('cas') !== null ? +q.get('cas') : null, MORFQ = q.get('morf') !== null ? +q.get('morf') : null;
+let raf = 0, t0 = 0, paused = !!USEK, faze = 'smycka', m0 = 0, p0 = 0;
+const now = () => performance.now() / 1000;
+const toParent = m => { if (USEK) parent.postMessage(Object.assign({ usek: USEK }, m), '*'); };
+function smycka() {
+  cancelAnimationFrame(raf); faze = 'smycka'; t0 = now();
+  const krok = () => { stav(pVCase(now() - t0)); raf = paused ? 0 : requestAnimationFrame(krok); };
+  krok();
+}
+function predej() { faze = 'konec'; cancelAnimationFrame(raf); raf = 0; morf(MORF, p0); if (USEK) toParent({ done: 'next', navaz: NAVAZ }); }
+function otoc() {
+  cancelAnimationFrame(raf); faze = 'morf'; m0 = now(); p0 = pVCase(m0 - t0);
+  toParent({ prime: NAVAZ });                                              // slide 7 si předem nastaví navazující snímek (bez probliknutí)
+  const krok = () => { const k = now() - m0; if (k >= MORF) return predej(); morf(k, p0); raf = paused ? 0 : requestAnimationFrame(krok); };
+  krok();
+}
+function next() {
+  if (USEK && paused) return;
+  if (faze === 'smycka') otoc();
+  else if (faze === 'morf') predej();                                      // druhá šipka během otočení: dokonči a předej
+  else if (USEK) toParent({ done: 'next', navaz: NAVAZ });
+  else smycka();                                                           // samostatně: znovu od začátku
+}
+const prev = () => { if (USEK && !paused) toParent({ done: 'prev' }); else if (!USEK) smycka(); };
+if (CAS !== null) stav(pVCase(CAS));
+else if (MORFQ !== null) morf(MORFQ, 0);
+else {
+  stav(0);
+  if (USEK) {
+    addEventListener('message', e => {
+      if (e.source !== parent) return;
+      const d = e.data || {};
+      if (d.cmd === 'pause') { paused = true; cancelAnimationFrame(raf); raf = 0; }
+      else if (d.cmd === 'start') { paused = false; smycka(); }
+      else if (d.cmd === 'next') next();
+      else if (d.cmd === 'prev') prev();
+    });
+    addEventListener('load', () => toParent({ ready: true }));
+  } else addEventListener('load', smycka);
+  let pd = null;
+  addEventListener('pointerdown', e => { if (e.isPrimary) pd = { x: e.clientX, y: e.clientY }; });
+  addEventListener('pointercancel', () => { pd = null; });
+  addEventListener('pointerup', e => {
+    if (!pd || !e.isPrimary) return;
+    const dx = e.clientX - pd.x, dy = e.clientY - pd.y; pd = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { if (dx < 0) next(); else prev(); return; }
+    if (Math.hypot(dx, dy) < 15 && e.button === 0) next();
+  });
+  addEventListener('keydown', e => {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', 'Space', 'Enter'].includes(e.code)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.code)) { e.preventDefault(); prev(); }
+    else if (USEK && ['Home', 'End', 'KeyF', 'KeyH'].includes(e.code)) toParent({ key: e.code });
+  });
+}
+window.__nalezato = () => ({ p: +svgEl.dataset.p, faze, paused, bezi: !!raf });
+</script>
+</body>
+</html>

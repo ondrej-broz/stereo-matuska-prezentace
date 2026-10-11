@@ -1,0 +1,90 @@
+[
+ {
+  "soubor": "A4 - 3.png",
+  "pozadi": "#213227",
+  "oblouk": {
+   "barva": "#2F4537",
+   "cx": 966.82,
+   "cy": 1707.3,
+   "r": 1245.45
+  },
+  "slovo": "outro/vrstvy/3-slovo.png"
+ },
+ {
+  "soubor": "A4 - 4.png",
+  "pozadi": "#213227",
+  "oblouk": {
+   "barva": "#2F4537",
+   "cx": 966.81,
+   "cy": 1707.29,
+   "r": 1245.43
+  },
+  "slovo": "outro/vrstvy/4-slovo.png"
+ },
+ {
+  "soubor": "A4 - 6.png",
+  "pozadi": "#F1E3BE",
+  "oblouk": {
+   "barva": "#D4B88E",
+   "cx": 966.78,
+   "cy": 1707.15,
+   "r": 1245.3
+  },
+  "slovo": "outro/vrstvy/6-slovo.png"
+ },
+ {
+  "soubor": "A4 - 5.png",
+  "pozadi": "#213227",
+  "oblouk": {
+   "barva": "#2F4537",
+   "cx": 966.82,
+   "cy": 1707.26,
+   "r": 1245.41
+  },
+  "slovo": "outro/vrstvy/5-slovo.png"
+ },
+ {
+  "soubor": "A4 - 7.png",
+  "pozadi": "#F1E3BE",
+  "oblouk": {
+   "barva": "#D4B88E",
+   "cx": 966.79,
+   "cy": 1707.22,
+   "r": 1245.35
+  },
+  "slovo": "outro/vrstvy/7-slovo.png"
+ },
+ {
+  "soubor": "A4 - 8.png",
+  "pozadi": "#C8553D",
+  "oblouk": {
+   "barva": "#8D3320",
+   "cx": 966.79,
+   "cy": 1707.19,
+   "r": 1245.34
+  },
+  "slovo": "outro/vrstvy/8-slovo.png"
+ },
+ {
+  "soubor": "A4 - 10.png",
+  "pozadi": "#213227",
+  "oblouk": {
+   "barva": "#2F4537",
+   "cx": 966.82,
+   "cy": 1707.35,
+   "r": 1245.48
+  },
+  "slovo": "outro/vrstvy/10-slovo.png"
+ },
+ {
+  "soubor": "A4 - 11.png",
+  "pozadi": "#F1E3BE",
+  "oblouk": {
+   "barva": "#D4B88E",
+   "cx": 966.78,
+   "cy": 1707.19,
+   "r": 1245.34
+  },
+  "slovo": "outro/vrstvy/11-slovo.png"
+ }
+]
