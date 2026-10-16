@@ -1,14 +1,13 @@
-"""Vyfotí slidy, které vznikají z HTML (cenová nabídka a závěr), do slideshow/*.webp – na Windows i v Claude Code v prohlížeči (Linux).
+"""Vyfotí slidy, které vznikají z HTML, do slideshow/*.webp – na Windows i v Claude Code v prohlížeči (Linux).
 
-    python vyfot-slidy.py nabidka-60          jeden slide
-    python vyfot-slidy.py nabidka-80 zaver    několik
+    python vyfot-slidy.py zaver               jeden slide
     python vyfot-slidy.py vse                 všechny
 
-Slidy: nabidka-80 (40_…), ale (40b_…), nabidka-60 (41_…), zaver (50_…). Každý se vyfotí v headless Chromu ve 2× (3840 × 2160,
+Slidy: názvy v tabulce SLIDY níže. Každý se vyfotí v headless Chromu ve 2× (3840 × 2160,
 originál vedle HTML – podklad pro PDF, do gitu nejde) a zmenší na 1920 × 1080 do slideshow/. Kořen = složka tohoto skriptu
 (v repozitáři kořen repa, na Disku Prezentace/final/); skript si sám pustí místní server, nic dalšího běžet nemusí.
 Chrome: proměnná CHROME, nainstalovaný Chrome / Chromium, jinak (Linux) stáhne Chrome for Testing ze storage.googleapis.com
-do ~/.cache/stereo-chrome a chybějící systémové knihovny doinstaluje přes apt. Náhrada nabidka/nabidka-snimky.py a zaver/zaver-snimek.py (11. 10. 2026)."""
+do ~/.cache/stereo-chrome a chybějící systémové knihovny doinstaluje přes apt. Náhrada starších skriptů *-snimky.py / *-snimek.py (11. 10. 2026)."""
 import functools, http.server, os, platform, random, shutil, socketserver, subprocess, sys, threading, urllib.request, zipfile
 from pathlib import Path
 
@@ -16,9 +15,6 @@ sys.stdout.reconfigure(encoding='utf-8', errors='replace')   # čeština i v kon
 
 KOREN = Path(__file__).resolve().parent
 SLIDY = {  # název: (stránka, originál 2×, slide ve slideshow/)
-    'nabidka-80': ('nabidka/nabidka.html#80', 'nabidka/nabidka-80.png', '40_nabidka-80000.webp'),
-    'ale':        ('nabidka/nabidka.html#ale', 'nabidka/nabidka-ale.png', '40b_nabidka-ale.webp'),
-    'nabidka-60': ('nabidka/nabidka.html#60', 'nabidka/nabidka-60.png', '41_nabidka-60000-kredit.webp'),
     'zaver':      ('zaver/zaver.html', 'zaver/zaver.png', '50_zaver.webp'),
 }
 CFT = '155.0.8059.39'   # Chrome for Testing pro Linux (ověřeno 11. 10. 2026, že ke stažení existuje)

@@ -20,11 +20,11 @@ Pak otevřít `http://localhost:8766/slideshow.html` (nebo `index.html`, který 
 
 ## Obsah
 
-Soubory, které prezentace za běhu používá, a zdroje slidů, které se dají opravit přímo tady (cenová nabídka `nabidka/`, závěr `zaver/`).
+Soubory, které prezentace za běhu používá, a zdroj závěrečného slidu, který se dá opravit přímo tady (`zaver/`).
 Ostatní zdrojové podklady jsou mimo repozitář.
 
 - `python kontrola.py` – kontrola před nahráním (skripty, obrázky, odkazy) a očíslovaný seznam slidů
-- `python vyfot-slidy.py <název>` – vyfotí slide z HTML do `slideshow/` (nabidka-80, ale, nabidka-60, zaver, vse)
+- `python vyfot-slidy.py <název>` – vyfotí slide z HTML do `slideshow/` (zaver, vse)
 - `CLAUDE.md` – návod pro úpravy přes Claude Code v prohlížeči
 
-Písmo Kit Rounded (`web/KitRounded-Light.otf`) je licencované přes Adobe. Inter (`web/Inter-Variable.ttf`) je pod SIL Open Font License.
+Písmo Kit Rounded (`web/KitRounded-Light.otf`) je licencované přes Adobe.

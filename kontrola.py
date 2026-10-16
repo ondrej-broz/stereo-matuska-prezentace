@@ -3,7 +3,7 @@
 1. skripty ve stránkách jdou přeložit (node --check) – např. rovný apostrof v textu slidu by jinak shodil celou prezentaci,
 2. každý slide ze seznamu SLIDES ve slideshow.html má svůj obrázek / text / animaci,
 3. obrázky, písma a stránky, na které stránky odkazují, existují.
-Vypíše očíslovaný seznam slidů (stejná čísla jako stavový řádek „N / 36“). Konec s kódem 1, když něco nesedí. Potřebuje Node.js."""
+Vypíše očíslovaný seznam slidů (stejná čísla jako stavový řádek „N / počet“). Konec s kódem 1, když něco nesedí. Potřebuje Node.js."""
 import json, re, shutil, subprocess, sys, tempfile
 from pathlib import Path
 from urllib.parse import unquote
@@ -12,10 +12,9 @@ sys.stdout.reconfigure(encoding='utf-8', errors='replace')   # čeština i v kon
 
 KOREN = Path(__file__).resolve().parent
 STRANKY = ['slideshow.html', 'intro-vyloha.html', 'koncept/prepinac-nalezato.html', 'socialni site/instagram-slide.html',
-           'nabidka/nabidka.html', 'zaver/zaver.html']
+           'zaver/zaver.html']
 SKRIPTY = ['socialni site/instagram.js']
-VYFOT = {'40_nabidka-80000.webp': 'nabidka-80', '40b_nabidka-ale.webp': 'ale', '41_nabidka-60000-kredit.webp': 'nabidka-60',
-         '50_zaver.webp': 'zaver'}   # slidy z HTML (vyfot-slidy.py)
+VYFOT = {'50_zaver.webp': 'zaver'}   # slidy z HTML (vyfot-slidy.py)
 chyby = []
 
 

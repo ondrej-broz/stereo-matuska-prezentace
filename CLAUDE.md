@@ -8,14 +8,14 @@ Opravy zadává Ondra (grafik, ne vývojář) přes Claude Code v prohlížeči 
 
 - Odpovídej **česky**, jednoduše, bez žargonu. Odborný pojem vysvětli poprvé jednou větou.
 - **Měň jen to, co Ondra zadal.** Design je schválený – nic „nevylepšuj“, neuklízej kód, nepřejmenovávej soubory.
-- Ondra mluví o slidech čísly ze stavového řádku vpravo dole („N / 36“). Čísla → soubory vypíše `python3 kontrola.py`.
+- Ondra mluví o slidech čísly ze stavového řádku vpravo dole („N / 33“). Čísla → soubory vypíše `python3 kontrola.py`.
 - Když není jasné, který slide nebo jaký text, zeptej se dřív, než začneš.
 
 ## Postup u každé opravy
 
 1. `python3 kontrola.py` – očíslovaný seznam slidů a odkud se který bere.
 2. Uprav (viz tabulka níže).
-3. Slide, který vzniká z HTML (cenová nabídka, závěr): `python3 vyfot-slidy.py <název>` a výsledný obrázek ve `slideshow/` si prohlédni (otevři ho jako obrázek), jestli text sedí a nic nepřetéká.
+3. Slide, který vzniká z HTML (závěr): `python3 vyfot-slidy.py <název>` a výsledný obrázek ve `slideshow/` si prohlédni (otevři ho jako obrázek), jestli text sedí a nic nepřetéká.
 4. `python3 kontrola.py` musí skončit „V pořádku“. Jinak oprav a pusť znovu.
 5. Commit (zpráva česky: co se na kterém slidu změnilo) a push do své větve.
 6. Řekni Ondrovi, co přesně se změnilo, a ať změnu pustí na web: **Create PR** → na GitHubu **Merge pull request** (jde i v mobilní aplikaci GitHub). Jeho Merge je zároveň kontrola člověkem před zveřejněním.
@@ -28,17 +28,14 @@ Opravy zadává Ondra (grafik, ne vývojář) přes Claude Code v prohlížeči 
 | texty Úvod, Přepínač, Přenoska, Font, Barvy (2, 5, 8, 18, 22) | `slideshow.html`, objekt `TEXTY` | text je v rovných apostrofech `'…'` |
 | pořadí slidů, vyřazení slidu | `slideshow.html`, pole `SLIDES` | názvy ve stavovém řádku: objekt `NAZVY` |
 | podpis „CREATED BY…“ (1) | `slideshow.html`, `#kredit` | |
-| cenová nabídka 80 000 Kč (32) | `nabidka/nabidka.html`, blok `#s80` | `python3 vyfot-slidy.py nabidka-80` |
-| slide ALE (33) | `nabidka/nabidka.html`, blok `#sale` | `python3 vyfot-slidy.py ale` |
-| náš návrh + věrnostní karta (34) | `nabidka/nabidka.html`, blok `#s60` | `python3 vyfot-slidy.py nabidka-60` |
-| závěr – slogan a kontakty (36) | `zaver/zaver.html` | `python3 vyfot-slidy.py zaver` |
+| závěr – slogan a kontakty (33) | `zaver/zaver.html` | `python3 vyfot-slidy.py zaver` |
 | Instagram – profil a posty (30, 31) | `socialni site/instagram.js` | živé HTML, nic se nefotí |
 | animace intro, přepínač, logo (1, 7, 9) | `intro-vyloha.html` | |
 | přepínač naležato (6) | `koncept/prepinac-nalezato.html` | |
-| outro (35) | `outro/vrstvy/` | |
+| outro (32) | `outro/vrstvy/` | |
 | ostatní obrázkové slidy | `slideshow/*.webp` (1920 × 1080) | hotové exporty od Ondry – text v nich jde opravit jen novým obrázkem |
 
-Písma ve `web/`: `StereoDisplay-Regular.otf` (autorské písmo identity), `KitRounded-Light.otf` (licence Adobe – nešířit, nekopírovat jinam), `Inter-Variable.ttf` (systémové písmo telefonu na kartě, SIL Open Font License).
+Písma ve `web/`: `StereoDisplay-Regular.otf` (autorské písmo identity), `KitRounded-Light.otf` (licence Adobe – nešířit, nekopírovat jinam).
 
 ## Nový obrázek od Ondry
 
@@ -47,8 +44,7 @@ Obrázek z konverzace neumíš uložit do souboru. Ať ho Ondra nahraje na GitHu
 ## Na co si dát pozor
 
 - **Rovný apostrof `'` uvnitř textů v `TEXTY` shodí celou prezentaci.** Uvozovky piš české „…“. Kontrola to pozná.
-- Repozitář je **veřejný**: nepřidávej interní dokumenty, ceníky v textu, smlouvy ani osobní údaje (kromě kontaktů, které už jsou na závěru). Žádné hesla ani klíče.
-- QR kód na kartě (slide 34) je schválně nefunkční vzor – nikdy tam nedávej skutečný.
+- Repozitář je **veřejný**: nepřidávej interní dokumenty, ceny ani obchodní podmínky (jsou jen v Ondrově verzi na Disku), smlouvy ani osobní údaje (kromě kontaktů, které už jsou na závěru). Žádné hesla ani klíče.
 - Nemaž soubory, které Ondra nezmínil, a nikdy nedělej force push ani přepis historie.
 - Rozměry slidů zůstávají 1920 × 1080; když měníš název obrázku, uprav i `SLIDES` a `NAZVY`.
 
@@ -61,4 +57,4 @@ Obrázek z konverzace neumíš uložit do souboru. Ať ho Ondra nahraje na GitHu
 
 ## Vztah k Ondrovým podkladům
 
-Kořen repozitáře odpovídá složce `Prezentace/final/` na Ondrově Google Disku, kde jsou i zdrojové podklady. Ondrův Claude na počítači odtud nahrává změny a před tím si stáhne všechno, co mezitím přibylo tady. Proto neměň strukturu složek a do zpráv commitů piš srozumitelně, co se změnilo.
+Kořen repozitáře odpovídá složce `Prezentace/final/` na Ondrově Google Disku, kde jsou i zdrojové podklady. Na Disku je prezentace delší (má části, které sem nepatří), tady je veřejná verze – slidy proto čísluj podle `python3 kontrola.py` tady, ne podle Disku. Ondrův Claude na počítači odtud nahrává změny a před tím si stáhne všechno, co mezitím přibylo tady. Proto neměň strukturu složek a do zpráv commitů piš srozumitelně, co se změnilo.

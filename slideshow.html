@@ -106,13 +106,7 @@ const SLIDES = [
   // Instagram (Ondra 11. 10.): samostatný profil (posty naskočí 0 → 3, klepnutí na Sledovat) a posty 18–20 vedle sebe
   // (telefony vyjedou zdola, pak srdíčka) – animace v socialni site/instagram-slide.html, konečné stavy 35/36 pro PDF
   'anim:ig-profil', 'anim:ig-posty',
-  // interiér (bar zboku) vyřazen ze slidů (Ondra 11. 10.: „slide 32 odstraň“) – obrázek slideshow/34_interier-bar-zboku.webp zůstává jako pozadí slidu ALE
-  // cenová nabídka (Ondra 11. 10., podle Prezentace/cenova_nabidka_STEREO_pro_Claude.md): 80 000 Kč, pak náš návrh 60 000 Kč + 20 000 Kč kreditem
-  // na věrnostní kartě STEREO (pass ve Walletu podle karty Automatu Matuška) – nabidka/nabidka.html, snímky nabidka-snimky.py
-  '40_nabidka-80000.webp',
-  '40b_nabidka-ale.webp',                                       // mezi nabídkami: interiér (bar zboku) s tmavým překryvem a ALE přes celý displej (Ondra 11. 10.)
-  '41_nabidka-60000-kredit.webp',
-  // závěr: Ondrovo outro (final/outro/A4 - 3…11.png) do rytmu – frame stojí 0,6 s, smyčka (Ondra 10. 10.); od 11. 10. až za cenovou nabídkou; 8 framů pro PDF
+  // závěr: Ondrovo outro (final/outro/A4 - 3…11.png) do rytmu – frame stojí 0,6 s, smyčka (Ondra 10. 10.); od 11. 10. na konci prezentace; 8 framů pro PDF
   'outro',
   // úplný závěr (Ondra 11. 10.): „Ve stereu zní spolupráce nejlíp. Těšíme se!“ – zaver/zaver.html, snímek zaver-snimek.py; statický
   // (sloučení s outrem – slogan místo slov – Ondra zkusil a vrátil: „necháme ten poslední slide statický“)
@@ -314,8 +308,8 @@ const NAZVY = {
   '23_typografie-z-loga-do-abecedy.webp': 'Z loga do abecedy', '24_typografie-znakova-sada.webp': 'Znaková sada', '25_barevna-paleta.webp': 'Barevná paleta',
   '26_eventy-mockup-den.webp': 'Plakáty – den', '27_eventy-mockup-noc.webp': 'Plakáty – noc', '28_ikony-wc-dvere.webp': 'Piktogramy WC',
   '29_podtacky-podsalky.webp': 'Podšálek a podtácek', '30_prostor-mracek-neon.webp': 'Neonový mráček', '31_web-hero-den.webp': 'Web – den',
-  '32_web-hero-noc.webp': 'Web – noc', 'anim:ig-profil': 'Instagram – profil', 'anim:ig-posty': 'Instagram – posty', '34_interier-bar-zboku.webp': 'Interiér',
-  'outro': 'Outro', '40_nabidka-80000.webp': 'Cenová nabídka', '40b_nabidka-ale.webp': 'Ale…', '41_nabidka-60000-kredit.webp': 'Náš návrh', '50_zaver.webp': 'Závěr'
+  '32_web-hero-noc.webp': 'Web – noc', 'anim:ig-profil': 'Instagram – profil', 'anim:ig-posty': 'Instagram – posty',
+  'outro': 'Outro', '50_zaver.webp': 'Závěr'
 };
 const nazev = n => NAZVY[n] || (textSlidu(n) ? textSlidu(n).nadpis + ' (text)' : placeholder(n) ? 'Web' : n.replace(/\.webp$/, ''));
 const navL = document.getElementById('navL'), navR = document.getElementById('navR'), stavEl = document.getElementById('stav');
